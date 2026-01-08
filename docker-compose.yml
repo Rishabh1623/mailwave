@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: mailwave-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - mailwave-network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    container_name: mailwave-backend
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - MONGODB_URI=mongodb://mongodb:27017/newsletter
+      - NODE_ENV=production
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - mailwave-network
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    container_name: mailwave-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_URL=http://35.168.36.1:5000/api
+    depends_on:
+      - backend
+    networks:
+      - mailwave-network
+    restart: unless-stopped
+
+volumes:
+  mongodb_data:
+
+networks:
+  mailwave-network:
+    driver: bridge
