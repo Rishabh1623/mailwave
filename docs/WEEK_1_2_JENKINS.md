@@ -11,20 +11,29 @@
 
 ## Day 1-2: Jenkins Installation
 
-### Step 1: Prepare EC2 Instance
+### Step 1: Prepare Your Existing EC2 Instance (t3.medium)
 
-**Option A: Use existing EC2 (if t2.large or bigger)**
+**You'll run everything on your existing t3.medium instance - it's perfect!**
+
 ```bash
-# Check your instance size
+# Verify your instance type
 curl http://169.254.169.254/latest/meta-data/instance-type
+# Should show: t3.medium ✅
+
+# Check available memory
+free -h
+# Should show ~4GB total ✅
 ```
 
-**Option B: Launch new EC2 for Jenkins**
+**Update Security Group:**
 1. Go to AWS EC2 Console
-2. Launch Ubuntu 22.04 LTS
-3. Instance type: t2.medium (minimum) or t2.large (recommended)
-4. Security Group: Add ports 8080 (Jenkins), 9000 (SonarQube)
-5. Use same key pair as your existing instance
+2. Select your instance
+3. Click on Security Group
+4. Add Inbound Rules:
+   - Port 8080 (Jenkins) - Source: 0.0.0.0/0
+   - Port 9000 (SonarQube) - Source: 0.0.0.0/0 (add in Week 3)
+   - Port 9090 (Prometheus) - Source: 0.0.0.0/0 (add in Week 7)
+   - Port 3001 (Grafana) - Source: 0.0.0.0/0 (add in Week 7)
 
 ### Step 2: Install Java (Jenkins Requirement)
 

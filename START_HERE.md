@@ -72,18 +72,23 @@ sudo docker-compose ps
 # - mailwave-mongodb
 # - mailwave-backend
 # - mailwave-frontend
+
+# Verify your instance type (should be t3.medium ✅)
+curl http://169.254.169.254/latest/meta-data/instance-type
 ```
 
 ### Step 2: Check Prerequisites
-- [ ] AWS EC2 instance running
-- [ ] Docker & Docker Compose working
-- [ ] GitHub repository with your code
+- [x] AWS EC2 t3.medium instance running ✅
+- [x] Docker & Docker Compose working ✅
+- [x] GitHub repository with your code ✅
 - [ ] AWS account with ECR access
 - [ ] Basic understanding of Git and Docker
 
-### Step 3: Start Week 1
+### Step 3: Follow the Roadmap
 
-**👉 Go to: [docs/WEEK_1_2_JENKINS.md](./docs/WEEK_1_2_JENKINS.md)**
+**📋 See complete file-by-file guide:** [LEARNING_ROADMAP.md](./LEARNING_ROADMAP.md)
+
+**👉 Start with:** [docs/WEEK_1_2_JENKINS.md](./docs/WEEK_1_2_JENKINS.md)
 
 This guide will walk you through:
 - Installing Jenkins on EC2
