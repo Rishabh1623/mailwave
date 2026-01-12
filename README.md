@@ -411,28 +411,30 @@ docker-compose --version
 ```
 
 ### Step 3: Create docker-compose.yml
-```bash
-# Navigate to project root
-cd ~/your-repo-name
 
-# Create docker-compose.yml using vim
-vim docker-compose.yml
+The `docker-compose.yml` file is already in your repository. Just pull it:
+
+```bash
+cd ~/mailwave
+git pull origin main
 ```
 
-**Press `i` to enter insert mode, then paste:**
-```yaml
+**Or create it manually using this command:**
+```bash
+cd ~/mailwave
+cat > docker-compose.yml << 'EOF'
 version: '3.8'
 
 services:
   mongodb:
     image: mongo:latest
-    container_name: newsletter-mongodb
+    container_name: mailwave-mongodb
     ports:
       - "27017:27017"
     volumes:
       - mongodb_data:/data/db
     networks:
-      - newsletter-network
+      - mailwave-network
     healthcheck:
       test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
       interval: 10s
@@ -441,7 +443,7 @@ services:
 
   backend:
     build: ./backend
-    container_name: newsletter-backend
+    container_name: mailwave-backend
     ports:
       - "5000:5000"
     environment:
@@ -452,121 +454,42 @@ services:
       mongodb:
         condition: service_healthy
     networks:
-      - newsletter-network
+      - mailwave-network
     restart: unless-stopped
 
   frontend:
     build: ./frontend
-    container_name: newsletter-frontend
+    container_name: mailwave-frontend
     ports:
       - "3000:3000"
     environment:
-      - REACT_APP_API_URL=http://localhost:5000/api
+      - REACT_APP_API_URL=http://YOUR_EC2_PUBLIC_IP:5000/api
     depends_on:
       - backend
     networks:
-      - newsletter-network
+      - mailwave-network
     restart: unless-stopped
 
 volumes:
   mongodb_data:
 
 networks:
-  newsletter-network:
+  mailwave-network:
     driver: bridge
+EOF
 ```
-**Press `ESC`, type `:wq`, press `ENTER` to save and exit**
 
-### Step 3: Create docker-compose.yml
+**Important:** Replace `YOUR_EC2_PUBLIC_IP` with your actual EC2 public IP in the docker-compose.yml file.
+
+### Step 4: Update Frontend Environment Variable
 ```bash
-# Navigate to project root
-cd ~/your-repo-name
+cd ~/mailwave/frontend
 
-# Create docker-compose.yml using vim
-vim docker-compose.yml
+# Create .env file with your EC2 public IP
+echo "REACT_APP_API_URL=http://YOUR_EC2_PUBLIC_IP:5000/api" > .env
 ```
 
-**Press `i` to enter insert mode, then paste:**
-```yaml
-version: '3.8'
-
-services:
-  mongodb:
-    image: mongo:latest
-    container_name: newsletter-mongodb
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongodb_data:/data/db
-    networks:
-      - newsletter-network
-    healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  backend:
-    build: ./backend
-    container_name: newsletter-backend
-    ports:
-      - "5000:5000"
-    environment:
-      - PORT=5000
-      - MONGODB_URI=mongodb://mongodb:27017/newsletter
-      - NODE_ENV=production
-    depends_on:
-      mongodb:
-        condition: service_healthy
-    networks:
-      - newsletter-network
-    restart: unless-stopped
-
-  frontend:
-    build: ./frontend
-    container_name: newsletter-frontend
-    ports:
-      - "3000:3000"
-    environment:
-      - REACT_APP_API_URL=http://localhost:5000/api
-    depends_on:
-      - backend
-    networks:
-      - newsletter-network
-    restart: unless-stopped
-
-volumes:
-  mongodb_data:
-
-networks:
-  newsletter-network:
-    driver: bridge
-```
-**Press `ESC`, type `:wq`, press `ENTER` to save and exit**
-
-### Step 4: Update Frontend for Docker Environment
-```bash
-cd ~/your-repo-name/frontend
-
-# Create .env file for frontend
-vim .env
-```
-**Add:**
-```
-REACT_APP_API_URL=http://your-ec2-public-ip:5000/api
-```
-
-### Step 4: Update Frontend for Docker Environment
-```bash
-cd ~/your-repo-name/frontend
-
-# Create .env file for frontend
-vim .env
-```
-**Add:**
-```
-REACT_APP_API_URL=http://your-ec2-public-ip:5000/api
-```
+**Replace `YOUR_EC2_PUBLIC_IP` with your actual IP address.**
 
 ### Step 5: Final Cleanup Before Starting (Best Practice)
 
@@ -622,24 +545,6 @@ docker-compose logs -f mongodb
 # Check container status
 docker-compose ps
 
-# Test backend health
-curl http://localhost:5000/api/health
-
-# Test MongoDB connection
-docker exec -it newsletter-mongodb mongosh
-
-# Inside MongoDB shell:
-show dbs
-use newsletter
-show collections
-exit
-```
-
-### Step 7: Verify Everything is Running
-```bash
-# Check container status
-docker-compose ps
-
 # Should show 3 containers running:
 # mailwave-mongodb    Up
 # mailwave-backend    Up
@@ -649,19 +554,13 @@ docker-compose ps
 curl http://localhost:5000/api/health
 
 # Test MongoDB connection
-docker exec -it mailwave-mongodb mongosh
+sudo docker exec -it mailwave-mongodb mongosh
 
 # Inside MongoDB shell:
 show dbs
 use newsletter
 show collections
 exit
-```
-
-### Step 8: Access Application
-```
-Frontend: http://your-ec2-public-ip:3000
-Backend API: http://your-ec2-public-ip:5000/api
 ```
 
 ### Step 8: Access Application
@@ -675,7 +574,7 @@ Backend API: http://your-ec2-public-ip:5000/api
 **Add sample blog posts to your application:**
 ```bash
 # Method 1: Use seed script (adds 12 posts)
-docker-compose exec backend npm run seed
+sudo docker-compose exec backend npm run seed
 
 # Method 2: Add single post via API
 curl -X POST http://localhost:5000/api/posts \
@@ -692,33 +591,32 @@ curl http://localhost:5000/api/posts
 
 ### Step 10: Useful Docker Compose Commands
 ```bash
-# Stop all services
-docker-compose down
+# Stop all services (keeps data)
+sudo docker-compose down
 
 # Stop and remove volumes (deletes data)
-docker-compose down -v
+sudo docker-compose down -v
+
+# Start services
+sudo docker-compose up -d
+
+# Restart after code changes
+sudo docker-compose down
+sudo docker-compose up --build -d
 
 # Restart specific service
-docker-compose restart backend
+sudo docker-compose restart backend
 
-# Rebuild specific service after code changes
-docker-compose up -d --build backend
-
-# Rebuild all services after code changes
-docker-compose up -d --build
+# View logs
+sudo docker-compose logs -f
+sudo docker-compose logs -f backend
 
 # View resource usage
-docker stats
+sudo docker stats
 
 # Execute command in container
-docker-compose exec backend sh
-docker-compose exec mongodb mongosh
-
-# Remove all stopped containers
-docker container prune
-
-# Remove all unused images
-docker image prune -a
+sudo docker-compose exec backend sh
+sudo docker-compose exec mongodb mongosh
 ```
 
 ---
@@ -915,23 +813,576 @@ docker-compose up --build -d
 
 ---
 
-## 📚 Next Steps in DevOps Journey
+## 🏗️ Phase 4: Production Fundamentals
 
-1. **CI/CD Pipeline** - GitHub Actions, Jenkins
-2. **Container Registry** - Docker Hub, AWS ECR
-3. **Orchestration** - Kubernetes, Docker Swarm
-4. **Monitoring** - Prometheus, Grafana
-5. **Logging** - ELK Stack, CloudWatch
-6. **Infrastructure as Code** - Terraform, CloudFormation
+Transform your application from a demo to production-ready with testing, security, and proper architecture.
+
+### What You'll Learn:
+- ✅ Automated testing (Unit + Integration)
+- ✅ Architecture documentation
+- ✅ Secrets management with AWS
+- ✅ Multi-environment configuration
+- ✅ Health checks and monitoring
+- ✅ Logging best practices
+
+### Step 1: Add Testing to Backend
+
+**Install testing dependencies:**
+```bash
+cd backend
+npm install --save-dev jest supertest
+```
+
+**Create test file `backend/tests/api.test.js`:**
+```javascript
+const request = require('supertest');
+const express = require('express');
+
+// Mock app for testing
+const app = express();
+app.use(express.json());
+
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'OK', message: 'Backend is running' });
+});
+
+describe('API Tests', () => {
+  test('GET /api/health should return 200', async () => {
+    const response = await request(app).get('/api/health');
+    expect(response.status).toBe(200);
+    expect(response.body.status).toBe('OK');
+  });
+});
+```
+
+**Update `backend/package.json` to add test script:**
+```json
+"scripts": {
+  "start": "node server.js",
+  "dev": "nodemon server.js",
+  "seed": "node scripts/seed.js",
+  "test": "jest --coverage"
+}
+```
+
+**Run tests:**
+```bash
+npm test
+```
+
+### Step 2: Add Testing to Frontend
+
+**Install testing dependencies:**
+```bash
+cd frontend
+npm install --save-dev @testing-library/react @testing-library/jest-dom @testing-library/user-event
+```
+
+**Create test file `frontend/src/App.test.js`:**
+```javascript
+import { render, screen } from '@testing-library/react';
+import App from './App';
+
+test('renders MailWave heading', () => {
+  render(<App />);
+  const headingElement = screen.getByText(/MailWave/i);
+  expect(headingElement).toBeInTheDocument();
+});
+
+test('renders subscribe section', () => {
+  render(<App />);
+  const subscribeElement = screen.getByText(/Subscribe to Our Newsletter/i);
+  expect(subscribeElement).toBeInTheDocument();
+});
+```
+
+**Run tests:**
+```bash
+npm test
+```
+
+### Step 3: Architecture Documentation
+
+**Create `docs/architecture.md`:**
+```markdown
+# MailWave Architecture
+
+## System Overview
+Three-tier web application with React frontend, Node.js backend, and MongoDB database.
+
+## Components
+
+### Frontend (Port 3000)
+- React SPA
+- Axios for API calls
+- Responsive UI
+
+### Backend (Port 5000)
+- Node.js + Express
+- RESTful API
+- Mongoose ODM
+
+### Database (Port 27017)
+- MongoDB
+- Collections: posts, subscribers
+
+## Network Architecture
+- All services run in Docker containers
+- Connected via custom bridge network
+- Exposed ports for external access
+
+## Data Flow
+1. User interacts with React frontend
+2. Frontend makes API calls to backend
+3. Backend processes requests and queries MongoDB
+4. Response flows back to frontend
+5. UI updates with data
+```
+
+**Create architecture diagram** (you can use draw.io, Lucidchart, or ASCII):
+```
+┌─────────────────┐
+│   Browser       │
+└────────┬────────┘
+         │ HTTP
+         ▼
+┌─────────────────┐
+│  Frontend       │
+│  (React:3000)   │
+└────────┬────────┘
+         │ API Calls
+         ▼
+┌─────────────────┐
+│  Backend        │
+│  (Node.js:5000) │
+└────────┬────────┘
+         │ Mongoose
+         ▼
+┌─────────────────┐
+│  MongoDB        │
+│  (Port 27017)   │
+└─────────────────┘
+```
+
+### Step 4: Secrets Management with AWS
+
+**Install AWS CLI on your EC2:**
+```bash
+# Install AWS CLI
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+sudo apt install unzip
+unzip awscliv2.zip
+sudo ./aws/install
+
+# Verify installation
+aws --version
+
+# Configure AWS credentials
+aws configure
+```
+
+**Store secrets in AWS Systems Manager Parameter Store:**
+```bash
+# Store MongoDB URI
+aws ssm put-parameter \
+  --name "/mailwave/prod/mongodb-uri" \
+  --value "mongodb://mongodb:27017/newsletter" \
+  --type "SecureString" \
+  --region us-east-1
+
+# Store JWT secret (if you add authentication later)
+aws ssm put-parameter \
+  --name "/mailwave/prod/jwt-secret" \
+  --value "your-secret-key-here" \
+  --type "SecureString" \
+  --region us-east-1
+```
+
+**Update backend to fetch secrets:**
+```bash
+cd backend
+npm install aws-sdk
+```
+
+**Create `backend/config/secrets.js`:**
+```javascript
+const AWS = require('aws-sdk');
+const ssm = new AWS.SSM({ region: 'us-east-1' });
+
+async function getParameter(name) {
+  try {
+    const result = await ssm.getParameter({
+      Name: name,
+      WithDecryption: true
+    }).promise();
+    return result.Parameter.Value;
+  } catch (error) {
+    console.error(`Error fetching parameter ${name}:`, error);
+    return null;
+  }
+}
+
+module.exports = { getParameter };
+```
+
+### Step 5: Multi-Environment Configuration
+
+**Create environment-specific docker-compose files:**
+
+**`docker-compose.dev.yml`** (Development):
+```yaml
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: mailwave-mongodb-dev
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data_dev:/data/db
+    networks:
+      - mailwave-network-dev
+
+  backend:
+    build: ./backend
+    container_name: mailwave-backend-dev
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - MONGODB_URI=mongodb://mongodb:27017/newsletter_dev
+      - NODE_ENV=development
+    depends_on:
+      - mongodb
+    networks:
+      - mailwave-network-dev
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+
+  frontend:
+    build: ./frontend
+    container_name: mailwave-frontend-dev
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_URL=http://localhost:5000/api
+    depends_on:
+      - backend
+    networks:
+      - mailwave-network-dev
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+
+volumes:
+  mongodb_data_dev:
+
+networks:
+  mailwave-network-dev:
+    driver: bridge
+```
+
+**`docker-compose.prod.yml`** (Production):
+```yaml
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: mailwave-mongodb-prod
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data_prod:/data/db
+    networks:
+      - mailwave-network-prod
+    restart: always
+
+  backend:
+    build: ./backend
+    container_name: mailwave-backend-prod
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - MONGODB_URI=mongodb://mongodb:27017/newsletter_prod
+      - NODE_ENV=production
+    depends_on:
+      - mongodb
+    networks:
+      - mailwave-network-prod
+    restart: always
+
+  frontend:
+    build: ./frontend
+    container_name: mailwave-frontend-prod
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_URL=http://YOUR_EC2_IP:5000/api
+    depends_on:
+      - backend
+    networks:
+      - mailwave-network-prod
+    restart: always
+
+volumes:
+  mongodb_data_prod:
+
+networks:
+  mailwave-network-prod:
+    driver: bridge
+```
+
+**Run specific environment:**
+```bash
+# Development
+docker-compose -f docker-compose.dev.yml up -d
+
+# Production
+docker-compose -f docker-compose.prod.yml up -d
+```
+
+### Step 6: Health Checks and Monitoring
+
+**Update `backend/server.js` with enhanced health check:**
+```javascript
+// Enhanced health check endpoint
+app.get('/api/health', async (req, res) => {
+  const healthCheck = {
+    uptime: process.uptime(),
+    message: 'OK',
+    timestamp: Date.now(),
+    environment: process.env.NODE_ENV,
+    database: 'disconnected'
+  };
+
+  try {
+    // Check MongoDB connection
+    if (mongoose.connection.readyState === 1) {
+      healthCheck.database = 'connected';
+    }
+    res.status(200).json(healthCheck);
+  } catch (error) {
+    healthCheck.message = error.message;
+    res.status(503).json(healthCheck);
+  }
+});
+
+// Readiness probe
+app.get('/api/ready', async (req, res) => {
+  if (mongoose.connection.readyState === 1) {
+    res.status(200).json({ status: 'ready' });
+  } else {
+    res.status(503).json({ status: 'not ready' });
+  }
+});
+
+// Liveness probe
+app.get('/api/live', (req, res) => {
+  res.status(200).json({ status: 'alive' });
+});
+```
+
+**Add logging middleware:**
+```javascript
+// Request logging middleware
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    console.log(`${req.method} ${req.path} ${res.statusCode} ${duration}ms`);
+  });
+  next();
+});
+```
+
+**Update docker-compose.yml with health checks:**
+```yaml
+backend:
+  build: ./backend
+  container_name: mailwave-backend
+  ports:
+    - "5000:5000"
+  environment:
+    - PORT=5000
+    - MONGODB_URI=mongodb://mongodb:27017/newsletter
+    - NODE_ENV=production
+  depends_on:
+    mongodb:
+      condition: service_healthy
+  networks:
+    - mailwave-network
+  restart: unless-stopped
+  healthcheck:
+    test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+    interval: 30s
+    timeout: 10s
+    retries: 3
+    start_period: 40s
+```
+
+### Step 7: Centralized Logging
+
+**Create `backend/utils/logger.js`:**
+```javascript
+const winston = require('winston');
+
+const logger = winston.createLogger({
+  level: process.env.LOG_LEVEL || 'info',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.json()
+  ),
+  transports: [
+    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
+    new winston.transports.File({ filename: 'logs/combined.log' }),
+    new winston.transports.Console({
+      format: winston.format.simple()
+    })
+  ]
+});
+
+module.exports = logger;
+```
+
+**Install winston:**
+```bash
+cd backend
+npm install winston
+```
+
+**Use logger in your code:**
+```javascript
+const logger = require('./utils/logger');
+
+// Replace console.log with logger
+logger.info('Server started on port 5000');
+logger.error('Database connection failed', { error: err.message });
+```
+
+### Step 8: Testing the Production Setup
+
+**Run all tests:**
+```bash
+# Backend tests
+cd backend
+npm test
+
+# Frontend tests
+cd frontend
+npm test
+```
+
+**Test health endpoints:**
+```bash
+# Health check
+curl http://localhost:5000/api/health
+
+# Readiness probe
+curl http://localhost:5000/api/ready
+
+# Liveness probe
+curl http://localhost:5000/api/live
+```
+
+**Test multi-environment setup:**
+```bash
+# Start development environment
+docker-compose -f docker-compose.dev.yml up -d
+
+# Verify
+docker ps
+
+# Stop development
+docker-compose -f docker-compose.dev.yml down
+
+# Start production environment
+docker-compose -f docker-compose.prod.yml up -d
+```
 
 ---
 
-## 🎯 Summary
+## 📚 Next Steps in DevOps Journey
 
-You've successfully:
-- ✅ Created a three-tier application
-- ✅ Deployed it on AWS Ubuntu
-- ✅ Containerized each service with Docker
-- ✅ Orchestrated services with Docker Compose
+You've completed the foundation! Now continue with advanced DevOps concepts:
 
-**Congratulations on completing your DevOps foundation!** 🎉
+### 📦 **Phase 5: Container Registry** (2-3 hours)
+- Push images to Docker Hub
+- Set up AWS ECR
+- Implement image versioning
+
+### 🔄 **Phase 6: Jenkins CI/CD with DevSecOps** (4-6 hours)
+- Install Jenkins
+- Create automated pipelines
+- Integrate security scanning
+- Automate deployments
+
+### ☁️ **Phase 7: AWS Deep Dive** (6-8 hours)
+- Custom VPC setup
+- Application Load Balancer
+- RDS database migration
+- Auto Scaling groups
+
+### ☸️ **Phase 8: Kubernetes + EKS** (8-12 hours)
+- Kubernetes fundamentals
+- Local Minikube deployment
+- AWS EKS cluster setup
+- Production orchestration
+
+### 📊 **Phase 9: Observability** (6-8 hours)
+- Prometheus metrics
+- Grafana dashboards
+- ELK Stack logging
+- Alerting setup
+
+### 🏗️ **Phase 10: Infrastructure as Code** (8-10 hours)
+- Terraform basics
+- AWS automation
+- Reusable modules
+- Best practices
+
+---
+
+## 📖 Detailed Phase Instructions
+
+**For complete step-by-step instructions for Phases 5-10, see:**
+👉 **[NEXT_PHASES_GUIDE.md](./NEXT_PHASES_GUIDE.md)**
+
+This comprehensive guide includes:
+- Detailed commands for each phase
+- Code examples and configurations
+- Troubleshooting tips
+- Recommended timeline (12-13 weeks)
+- Success criteria
+
+---
+
+## 🎯 Current Progress
+
+**Completed:**
+- ✅ Phase 1: Local Testing on AWS Ubuntu
+- ✅ Phase 2: Dockerization
+- ✅ Phase 3: Docker Compose Orchestration
+
+**Next Up:**
+- 🎯 Phase 5: Container Registry (Start here!)
+
+**Timeline to DevOps Mastery:** 12-13 weeks  
+**Target:** Ready for DevOps roles in 2026! 🚀
+
+---
+
+## 🎉 Summary
+
+You've successfully built a production-ready three-tier application with:
+- ✅ React frontend
+- ✅ Node.js/Express backend
+- ✅ MongoDB database
+- ✅ Docker containerization
+- ✅ Docker Compose orchestration
+
+**Continue to Phase 5 to master advanced DevOps concepts!**
