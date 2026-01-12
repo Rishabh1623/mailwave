@@ -1306,58 +1306,60 @@ docker-compose -f docker-compose.prod.yml up -d
 
 ---
 
-## 📚 Next Steps in DevOps Journey
+## 🚀 Next Steps: Complete DevSecOps Pipeline (10 Weeks)
 
-You've completed the foundation! Now continue with advanced DevOps concepts:
+You've completed the foundation! Now build an **industry-standard DevSecOps pipeline**.
 
-### 📦 **Phase 5: Container Registry** (2-3 hours)
-- Push images to Docker Hub
-- Set up AWS ECR
-- Implement image versioning
+### 🎯 What You'll Build
 
-### 🔄 **Phase 6: Jenkins CI/CD with DevSecOps** (4-6 hours)
-- Install Jenkins
-- Create automated pipelines
-- Integrate security scanning
-- Automate deployments
+**Complete CI/CD Pipeline with Security:**
+```
+GitHub → Jenkins → SonarQube → OWASP → Trivy → Docker → AWS ECR → EKS
+```
 
-### ☁️ **Phase 7: AWS Deep Dive** (6-8 hours)
-- Custom VPC setup
-- Application Load Balancer
-- RDS database migration
-- Auto Scaling groups
+### 📅 10-Week Learning Path
 
-### ☸️ **Phase 8: Kubernetes + EKS** (8-12 hours)
-- Kubernetes fundamentals
-- Local Minikube deployment
-- AWS EKS cluster setup
-- Production orchestration
+| Week | Focus | What You'll Learn |
+|------|-------|-------------------|
+| **1-2** | **Jenkins CI/CD** | Pipeline automation, AWS ECR integration |
+| **3** | **SonarQube** | Code quality analysis, quality gates |
+| **4** | **OWASP** | Dependency vulnerability scanning |
+| **5** | **Trivy** | Container security scanning |
+| **6** | **Integration** | Complete DevSecOps pipeline |
+| **7-8** | **Monitoring** | Prometheus + Grafana observability |
+| **9-10** | **AWS EKS** | Production Kubernetes deployment |
 
-### 📊 **Phase 9: Observability** (6-8 hours)
-- Prometheus metrics
-- Grafana dashboards
-- ELK Stack logging
-- Alerting setup
+### 🛠️ Tools You'll Master
 
-### 🏗️ **Phase 10: Infrastructure as Code** (8-10 hours)
-- Terraform basics
-- AWS automation
-- Reusable modules
-- Best practices
+- ✅ **Jenkins** - CI/CD orchestration
+- ✅ **SonarQube** - Code quality analysis
+- ✅ **OWASP Dependency-Check** - Security scanning
+- ✅ **Trivy** - Container vulnerability scanning
+- ✅ **AWS ECR** - Container registry
+- ✅ **Prometheus + Grafana** - Monitoring
+- ✅ **AWS EKS** - Kubernetes
 
 ---
 
-## 📖 Detailed Phase Instructions
+## 📖 Complete DevSecOps Guide
 
-**For complete step-by-step instructions for Phases 5-10, see:**
-👉 **[NEXT_PHASES_GUIDE.md](./NEXT_PHASES_GUIDE.md)**
+**👉 Start Here: [docs/README.md](./docs/README.md)**
 
 This comprehensive guide includes:
-- Detailed commands for each phase
-- Code examples and configurations
-- Troubleshooting tips
-- Recommended timeline (12-13 weeks)
-- Success criteria
+- ✅ Step-by-step instructions for each week
+- ✅ Complete code examples and configurations
+- ✅ Troubleshooting sections
+- ✅ Checklists to track progress
+- ✅ Best practices for 2026
+
+**Quick Links:**
+- [Week 1-2: Jenkins Setup](./docs/WEEK_1_2_JENKINS.md) ← **Start here!**
+- [Week 3: SonarQube](./docs/WEEK_3_SONARQUBE.md)
+- [Week 4: OWASP](./docs/WEEK_4_OWASP.md)
+- [Week 5: Trivy](./docs/WEEK_5_TRIVY.md)
+- [Week 6: Integration](./docs/WEEK_6_INTEGRATION.md)
+- [Week 7-8: Monitoring](./docs/WEEK_7_8_MONITORING.md)
+- [Week 9-10: EKS](./docs/WEEK_9_10_EKS.md)
 
 ---
 
@@ -1369,20 +1371,20 @@ This comprehensive guide includes:
 - ✅ Phase 3: Docker Compose Orchestration
 
 **Next Up:**
-- 🎯 Phase 5: Container Registry (Start here!)
+- 🎯 **Week 1-2: Jenkins CI/CD Pipeline** ← Start here!
 
-**Timeline to DevOps Mastery:** 12-13 weeks  
-**Target:** Ready for DevOps roles in 2026! 🚀
+**Timeline:** 10 weeks to complete DevSecOps mastery  
+**Target:** Ready for DevSecOps roles in 2026! 🚀
 
 ---
 
-## 🎉 Summary
+## 🎉 What You've Built So Far
 
-You've successfully built a production-ready three-tier application with:
+You've successfully created a production-ready three-tier application:
 - ✅ React frontend
 - ✅ Node.js/Express backend
 - ✅ MongoDB database
 - ✅ Docker containerization
 - ✅ Docker Compose orchestration
 
-**Continue to Phase 5 to master advanced DevOps concepts!**
+**Now add enterprise-grade CI/CD, security, and monitoring!**
