@@ -7,6 +7,7 @@ pipeline {
         ECR_REPO = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
         BACKEND_IMAGE = 'mailwave-backend'
         FRONTEND_IMAGE = 'mailwave-frontend'
+        SONAR_SCANNER = tool 'SonarScanner'
     }
     
     stages {
@@ -14,6 +15,46 @@ pipeline {
             steps {
                 echo 'Checking out code from GitHub...'
                 checkout scm
+            }
+        }
+        
+        stage('SonarQube Analysis - Backend') {
+            steps {
+                echo 'Running SonarQube analysis on backend...'
+                dir('backend') {
+                    withSonarQubeEnv('SonarQube') {
+                        sh "${SONAR_SCANNER}/bin/sonar-scanner"
+                    }
+                }
+            }
+        }
+        
+        stage('Quality Gate - Backend') {
+            steps {
+                echo 'Checking quality gate for backend...'
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+        
+        stage('SonarQube Analysis - Frontend') {
+            steps {
+                echo 'Running SonarQube analysis on frontend...'
+                dir('frontend') {
+                    withSonarQubeEnv('SonarQube') {
+                        sh "${SONAR_SCANNER}/bin/sonar-scanner"
+                    }
+                }
+            }
+        }
+        
+        stage('Quality Gate - Frontend') {
+            steps {
+                echo 'Checking quality gate for frontend...'
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
             }
         }
         
