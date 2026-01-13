@@ -45,19 +45,25 @@ pipeline {
             steps {
                 echo 'Pushing images to AWS ECR...'
                 script {
-                    sh """
-                        aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REPO}
-                        
-                        docker tag ${BACKEND_IMAGE}:${BUILD_NUMBER} ${ECR_REPO}/${BACKEND_IMAGE}:${BUILD_NUMBER}
-                        docker tag ${BACKEND_IMAGE}:latest ${ECR_REPO}/${BACKEND_IMAGE}:latest
-                        docker push ${ECR_REPO}/${BACKEND_IMAGE}:${BUILD_NUMBER}
-                        docker push ${ECR_REPO}/${BACKEND_IMAGE}:latest
-                        
-                        docker tag ${FRONTEND_IMAGE}:${BUILD_NUMBER} ${ECR_REPO}/${FRONTEND_IMAGE}:${BUILD_NUMBER}
-                        docker tag ${FRONTEND_IMAGE}:latest ${ECR_REPO}/${FRONTEND_IMAGE}:latest
-                        docker push ${ECR_REPO}/${FRONTEND_IMAGE}:${BUILD_NUMBER}
-                        docker push ${ECR_REPO}/${FRONTEND_IMAGE}:latest
-                    """
+                    // Use AWS credentials stored in Jenkins
+                    withCredentials([
+                        string(credentialsId: 'aws-access-key-id', variable: 'AWS_ACCESS_KEY_ID'),
+                        string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')
+                    ]) {
+                        sh """
+                            aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REPO}
+                            
+                            docker tag ${BACKEND_IMAGE}:${BUILD_NUMBER} ${ECR_REPO}/${BACKEND_IMAGE}:${BUILD_NUMBER}
+                            docker tag ${BACKEND_IMAGE}:latest ${ECR_REPO}/${BACKEND_IMAGE}:latest
+                            docker push ${ECR_REPO}/${BACKEND_IMAGE}:${BUILD_NUMBER}
+                            docker push ${ECR_REPO}/${BACKEND_IMAGE}:latest
+                            
+                            docker tag ${FRONTEND_IMAGE}:${BUILD_NUMBER} ${ECR_REPO}/${FRONTEND_IMAGE}:${BUILD_NUMBER}
+                            docker tag ${FRONTEND_IMAGE}:latest ${ECR_REPO}/${FRONTEND_IMAGE}:latest
+                            docker push ${ECR_REPO}/${FRONTEND_IMAGE}:${BUILD_NUMBER}
+                            docker push ${ECR_REPO}/${FRONTEND_IMAGE}:latest
+                        """
+                    }
                 }
             }
         }
