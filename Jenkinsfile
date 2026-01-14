@@ -30,14 +30,14 @@ pipeline {
                         dependencyCheck additionalArguments: '''
                             --scan ./
                             --format HTML
-                            --format JSON
                             --format XML
                             --project "MailWave Backend"
                             --failOnCVSS 7
                             --disableNodeAudit
+                            --nvdApiDelay 6000
                         ''', odcInstallation: 'DP-Check'
                         
-                        dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+                        dependencyCheckPublisher pattern: 'dependency-check-report.xml'
                     }
                 }
             }
@@ -51,14 +51,14 @@ pipeline {
                         dependencyCheck additionalArguments: '''
                             --scan ./
                             --format HTML
-                            --format JSON
                             --format XML
                             --project "MailWave Frontend"
                             --failOnCVSS 7
                             --disableNodeAudit
+                            --nvdApiDelay 6000
                         ''', odcInstallation: 'DP-Check'
                         
-                        dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+                        dependencyCheckPublisher pattern: 'dependency-check-report.xml'
                     }
                 }
             }
