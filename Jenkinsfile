@@ -143,14 +143,10 @@ pipeline {
                         sh """
                             aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REPO}
                             
-                            docker tag ${BACKEND_IMAGE}:${BUILD_NUMBER} ${ECR_REPO}/${BACKEND_IMAGE}:${BUILD_NUMBER}
-                            docker tag ${BACKEND_IMAGE}:latest ${ECR_REPO}/${BACKEND_IMAGE}:latest
-                            docker push ${ECR_REPO}/${BACKEND_IMAGE}:${BUILD_NUMBER}
+                            docker tag ${BACKEND_IMAGE}:${BUILD_NUMBER} ${ECR_REPO}/${BACKEND_IMAGE}:latest
                             docker push ${ECR_REPO}/${BACKEND_IMAGE}:latest
                             
-                            docker tag ${FRONTEND_IMAGE}:${BUILD_NUMBER} ${ECR_REPO}/${FRONTEND_IMAGE}:${BUILD_NUMBER}
-                            docker tag ${FRONTEND_IMAGE}:latest ${ECR_REPO}/${FRONTEND_IMAGE}:latest
-                            docker push ${ECR_REPO}/${FRONTEND_IMAGE}:${BUILD_NUMBER}
+                            docker tag ${FRONTEND_IMAGE}:${BUILD_NUMBER} ${ECR_REPO}/${FRONTEND_IMAGE}:latest
                             docker push ${ECR_REPO}/${FRONTEND_IMAGE}:latest
                         """
                     }
