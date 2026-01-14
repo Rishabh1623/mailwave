@@ -18,6 +18,42 @@ pipeline {
             }
         }
         
+        stage('OWASP Dependency Check - Backend') {
+            steps {
+                echo 'Running OWASP Dependency Check on backend...'
+                dir('backend') {
+                    dependencyCheck additionalArguments: '''
+                        --scan ./
+                        --format HTML
+                        --format JSON
+                        --format XML
+                        --project "MailWave Backend"
+                        --failOnCVSS 7
+                    ''', odcInstallation: 'DP-Check'
+                    
+                    dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+                }
+            }
+        }
+        
+        stage('OWASP Dependency Check - Frontend') {
+            steps {
+                echo 'Running OWASP Dependency Check on frontend...'
+                dir('frontend') {
+                    dependencyCheck additionalArguments: '''
+                        --scan ./
+                        --format HTML
+                        --format JSON
+                        --format XML
+                        --project "MailWave Frontend"
+                        --failOnCVSS 7
+                    ''', odcInstallation: 'DP-Check'
+                    
+                    dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+                }
+            }
+        }
+        
         stage('SonarQube Analysis - Backend') {
             steps {
                 echo 'Running SonarQube analysis on backend...'
