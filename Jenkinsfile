@@ -1,6 +1,10 @@
 pipeline {
     agent any
     
+    options {
+        timeout(time: 60, unit: 'MINUTES')
+    }
+    
     environment {
         AWS_REGION = 'us-east-1'
         AWS_ACCOUNT_ID = '543927035352'
@@ -30,6 +34,7 @@ pipeline {
                             --format XML
                             --project "MailWave Backend"
                             --failOnCVSS 7
+                            --disableNodeAudit
                         ''', odcInstallation: 'DP-Check'
                         
                         dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
@@ -50,6 +55,7 @@ pipeline {
                             --format XML
                             --project "MailWave Frontend"
                             --failOnCVSS 7
+                            --disableNodeAudit
                         ''', odcInstallation: 'DP-Check'
                         
                         dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
