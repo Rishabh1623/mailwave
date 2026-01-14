@@ -78,7 +78,7 @@ pipeline {
         stage('Quality Gate - Backend') {
             steps {
                 echo 'Checking quality gate for backend...'
-                timeout(time: 2, unit: 'MINUTES') {
+                timeout(time: 5, unit: 'MINUTES') {
                     waitForQualityGate abortPipeline: false
                 }
             }
@@ -98,7 +98,7 @@ pipeline {
         stage('Quality Gate - Frontend') {
             steps {
                 echo 'Checking quality gate for frontend...'
-                timeout(time: 2, unit: 'MINUTES') {
+                timeout(time: 5, unit: 'MINUTES') {
                     waitForQualityGate abortPipeline: false
                 }
             }
