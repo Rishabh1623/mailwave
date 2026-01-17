@@ -17,7 +17,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                echo 'Checking out code from GitHub...'
+                echo '📥 Checking out code from GitHub...'
                 checkout scm
             }
         }
@@ -25,7 +25,7 @@ pipeline {
         
         stage('OWASP Dependency Check - Backend') {
             steps {
-                echo 'Running OWASP Dependency Check on backend...'
+                echo '🔍 Running OWASP Dependency Check on backend...'
                 timeout(time: 30, unit: 'MINUTES') {
                     dir('backend') {
                         dependencyCheck additionalArguments: '''
@@ -46,7 +46,7 @@ pipeline {
         
         stage('OWASP Dependency Check - Frontend') {
             steps {
-                echo 'Running OWASP Dependency Check on frontend...'
+                echo '🔍 Running OWASP Dependency Check on frontend...'
                 timeout(time: 30, unit: 'MINUTES') {
                     dir('frontend') {
                         dependencyCheck additionalArguments: '''
@@ -67,7 +67,7 @@ pipeline {
         
         stage('SonarQube Analysis - Backend') {
             steps {
-                echo 'Running SonarQube analysis on backend...'
+                echo '📊 Running SonarQube analysis on backend...'
                 dir('backend') {
                     withSonarQubeEnv('SonarQube') {
                         sh "${SONAR_SCANNER}/bin/sonar-scanner"
@@ -78,7 +78,7 @@ pipeline {
         
         stage('Quality Gate - Backend') {
             steps {
-                echo 'Checking quality gate for backend...'
+                echo '🚦 Checking quality gate for backend...'
                 timeout(time: 5, unit: 'MINUTES') {
                     waitForQualityGate abortPipeline: false
                 }
@@ -87,7 +87,7 @@ pipeline {
         
         stage('SonarQube Analysis - Frontend') {
             steps {
-                echo 'Running SonarQube analysis on frontend...'
+                echo '📊 Running SonarQube analysis on frontend...'
                 dir('frontend') {
                     withSonarQubeEnv('SonarQube') {
                         sh "${SONAR_SCANNER}/bin/sonar-scanner"
@@ -98,7 +98,7 @@ pipeline {
         
         stage('Quality Gate - Frontend') {
             steps {
-                echo 'Checking quality gate for frontend...'
+                echo '🚦 Checking quality gate for frontend...'
                 timeout(time: 5, unit: 'MINUTES') {
                     waitForQualityGate abortPipeline: false
                 }
@@ -107,7 +107,7 @@ pipeline {
         
         stage('Build Backend Image') {
             steps {
-                echo 'Building backend Docker image...'
+                echo '🐳 Building backend Docker image...'
                 dir('backend') {
                     script {
                         sh "docker build -t ${BACKEND_IMAGE}:${BUILD_NUMBER} ."
@@ -119,7 +119,7 @@ pipeline {
         
         stage('Build Frontend Image') {
             steps {
-                echo 'Building frontend Docker image...'
+                echo '🐳 Building frontend Docker image...'
                 dir('frontend') {
                     script {
                         sh "docker build -t ${FRONTEND_IMAGE}:${BUILD_NUMBER} ."
@@ -131,7 +131,7 @@ pipeline {
         
         stage('Trivy Scan - Backend') {
             steps {
-                echo 'Scanning backend image with Trivy...'
+                echo '🔒 Scanning backend image with Trivy...'
                 script {
                     sh """
                         trivy image \
@@ -151,7 +151,7 @@ pipeline {
         
         stage('Trivy Scan - Frontend') {
             steps {
-                echo 'Scanning frontend image with Trivy...'
+                echo '🔒 Scanning frontend image with Trivy...'
                 script {
                     sh """
                         trivy image \
@@ -171,7 +171,7 @@ pipeline {
         
         stage('Push to ECR') {
             steps {
-                echo 'Pushing images to AWS ECR...'
+                echo '📤 Pushing images to AWS ECR...'
                 script {
                     // Use AWS credentials stored in Jenkins
                     withCredentials([[
@@ -197,14 +197,15 @@ pipeline {
     
     post {
         always {
-            echo 'Cleaning up...'
+            echo '🧹 Cleaning up...'
             sh 'docker system prune -f'
+            archiveArtifacts artifacts: '*-trivy-report.json', allowEmptyArchive: true
         }
         success {
-            echo '✅ Pipeline succeeded!'
+            echo '✅ Pipeline succeeded! All security checks passed.'
         }
         failure {
-            echo '❌ Pipeline failed!'
+            echo '❌ Pipeline failed! Check security scan results.'
         }
     }
 }
