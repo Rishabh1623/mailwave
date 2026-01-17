@@ -129,6 +129,46 @@ pipeline {
             }
         }
         
+        stage('Trivy Scan - Backend') {
+            steps {
+                echo 'Scanning backend image with Trivy...'
+                script {
+                    sh """
+                        trivy image \
+                            --severity HIGH,CRITICAL \
+                            --format json \
+                            --output backend-trivy-report.json \
+                            ${BACKEND_IMAGE}:${BUILD_NUMBER}
+                        
+                        trivy image \
+                            --severity HIGH,CRITICAL \
+                            --exit-code 1 \
+                            ${BACKEND_IMAGE}:${BUILD_NUMBER}
+                    """
+                }
+            }
+        }
+        
+        stage('Trivy Scan - Frontend') {
+            steps {
+                echo 'Scanning frontend image with Trivy...'
+                script {
+                    sh """
+                        trivy image \
+                            --severity HIGH,CRITICAL \
+                            --format json \
+                            --output frontend-trivy-report.json \
+                            ${FRONTEND_IMAGE}:${BUILD_NUMBER}
+                        
+                        trivy image \
+                            --severity HIGH,CRITICAL \
+                            --exit-code 1 \
+                            ${FRONTEND_IMAGE}:${BUILD_NUMBER}
+                    """
+                }
+            }
+        }
+        
         stage('Push to ECR') {
             steps {
                 echo 'Pushing images to AWS ECR...'
