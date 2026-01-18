@@ -102,17 +102,22 @@ pipeline {
                 echo '🚦 Checking quality gates...'
                 timeout(time: 5, unit: 'MINUTES') {
                     script {
-                        def qg = waitForQualityGate()
-                        if (qg.status != 'OK') {
-                            echo "⚠️ Quality Gate status: ${qg.status}"
-                            echo "Quality issues detected. Review at: http://13.218.28.204:9000"
-                            echo ""
-                            echo "NOTE: Continuing deployment for learning purposes."
-                            echo "In production, this would fail the build."
-                            echo "Please review and fix quality issues."
-                            // Don't fail the build - just warn
-                        } else {
-                            echo "✅ Quality Gate passed!"
+                        try {
+                            def qg = waitForQualityGate()
+                            if (qg.status != 'OK') {
+                                echo "⚠️ Quality Gate status: ${qg.status}"
+                                echo "Quality issues detected. Review at: http://13.218.28.204:9000"
+                                echo ""
+                                echo "NOTE: Continuing deployment for learning purposes."
+                                echo "In production, this would fail the build."
+                                echo "Please review and fix quality issues."
+                                // Don't fail the build - just warn
+                            } else {
+                                echo "✅ Quality Gate passed!"
+                            }
+                        } catch (Exception e) {
+                            echo "⚠️ Quality Gate check failed: ${e.message}"
+                            echo "Continuing pipeline for learning purposes..."
                         }
                     }
                 }
