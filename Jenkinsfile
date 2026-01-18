@@ -100,24 +100,14 @@ pipeline {
         stage('Quality Gate') {
             steps {
                 echo '🚦 Checking quality gates...'
-                script {
-                    try {
-                        timeout(time: 2, unit: 'MINUTES') {
-                            def qg = waitForQualityGate()
-                            if (qg.status != 'OK') {
-                                echo "⚠️ Quality Gate failed: ${qg.status}"
-                                echo "Continuing anyway for learning purposes..."
-                            } else {
-                                echo "✅ Quality Gate passed!"
-                            }
+                timeout(time: 5, unit: 'MINUTES') {
+                    script {
+                        def qg = waitForQualityGate()
+                        if (qg.status != 'OK') {
+                            error "❌ Quality Gate failed: ${qg.status}. Fix code quality issues before deploying!"
+                        } else {
+                            echo "✅ Quality Gate passed!"
                         }
-                    } catch (org.jenkinsci.plugins.workflow.steps.FlowInterruptedException e) {
-                        echo "⚠️ Quality Gate timed out - SonarQube webhook likely not configured"
-                        echo "To fix: Configure webhook in SonarQube pointing to Jenkins"
-                        echo "Skipping quality gate check and continuing..."
-                    } catch (Exception e) {
-                        echo "⚠️ Quality Gate check failed: ${e.message}"
-                        echo "Continuing anyway for learning purposes..."
                     }
                 }
             }
