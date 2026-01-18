@@ -252,10 +252,10 @@ pipeline {
                         accessKeyVariable: 'AWS_ACCESS_KEY_ID',
                         secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
                     ]]) {
-                        sh """
+                        sh '''
                             echo "=== Pre-Deployment Diagnostics ==="
                             echo "Checking existing containers..."
-                            docker ps -a --filter "name=mailwave" --format "table {{.Names}}\t{{.Status}}\t{{.Image}}" || true
+                            docker ps -a --filter "name=mailwave" || true
                             
                             echo ""
                             echo "Checking existing networks..."
@@ -264,21 +264,18 @@ pipeline {
                             echo ""
                             echo "=== Starting Cleanup ==="
                             
-                            # Stop all mailwave containers (regardless of how they were created)
-                            echo "Stopping containers..."
-                            docker stop \$(docker ps -aq --filter "name=mailwave") 2>/dev/null || echo "No running containers to stop"
-                            
-                            # Remove all mailwave containers
-                            echo "Removing containers..."
-                            docker rm -f \$(docker ps -aq --filter "name=mailwave") 2>/dev/null || echo "No containers to remove"
+                            # Stop and remove specific containers by name
+                            echo "Stopping and removing containers..."
+                            docker stop mailwave-mongodb mailwave-backend mailwave-frontend 2>/dev/null || true
+                            docker rm -f mailwave-mongodb mailwave-backend mailwave-frontend 2>/dev/null || true
                             
                             # Remove docker-compose resources
                             echo "Cleaning up docker-compose resources..."
                             docker-compose down -v 2>/dev/null || true
                             
                             # Remove any orphaned mailwave networks
-                            echo "Removing networks..."
-                            docker network rm \$(docker network ls --filter "name=mailwave" -q) 2>/dev/null || echo "No networks to remove"
+                            echo "Removing orphaned networks..."
+                            docker network prune -f || true
                             
                             echo ""
                             echo "=== Cleanup Complete ==="
@@ -288,17 +285,17 @@ pipeline {
                             echo "=== Starting Deployment ==="
                             
                             # Login to ECR
-                            aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REPO}
+                            aws ecr get-login-password --region ''' + AWS_REGION + ''' | docker login --username AWS --password-stdin ''' + ECR_REPO + '''
                             
                             # Pull latest images from ECR
                             echo "Pulling images from ECR..."
-                            docker pull ${ECR_REPO}/${BACKEND_IMAGE}:latest
-                            docker pull ${ECR_REPO}/${FRONTEND_IMAGE}:latest
+                            docker pull ''' + ECR_REPO + '''/''' + BACKEND_IMAGE + ''':latest
+                            docker pull ''' + ECR_REPO + '''/''' + FRONTEND_IMAGE + ''':latest
                             
                             # Tag images for docker-compose
                             echo "Tagging images..."
-                            docker tag ${ECR_REPO}/${BACKEND_IMAGE}:latest ${BACKEND_IMAGE}:latest
-                            docker tag ${ECR_REPO}/${FRONTEND_IMAGE}:latest ${FRONTEND_IMAGE}:latest
+                            docker tag ''' + ECR_REPO + '''/''' + BACKEND_IMAGE + ''':latest ''' + BACKEND_IMAGE + ''':latest
+                            docker tag ''' + ECR_REPO + '''/''' + FRONTEND_IMAGE + ''':latest ''' + FRONTEND_IMAGE + ''':latest
                             
                             # Start new containers
                             echo "Starting containers with docker-compose..."
@@ -315,14 +312,14 @@ pipeline {
                             echo ""
                             echo "=== Health Checks ==="
                             echo "Checking backend health..."
-                            curl -f http://localhost:5000/api/health || echo "⚠️ Backend health check failed (may still be starting)"
+                            curl -f http://localhost:5000/api/health || echo "Backend may still be starting..."
                             
                             echo "Checking frontend..."
-                            curl -f http://localhost:3000 || echo "⚠️ Frontend check failed (may still be starting)"
+                            curl -f http://localhost:3000 || echo "Frontend may still be starting..."
                             
                             echo ""
-                            echo "✅ Deployment complete!"
-                        """
+                            echo "Deployment complete!"
+                        '''
                     }
                 }
             }
