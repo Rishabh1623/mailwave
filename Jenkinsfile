@@ -104,14 +104,7 @@ pipeline {
                     script {
                         def qg = waitForQualityGate()
                         if (qg.status != 'OK') {
-                            echo "⚠️ Quality Gate status: ${qg.status}"
-                            echo "Quality issues detected. Review at: http://13.218.28.204:9000"
-                            
-                            // For learning/development: warn but continue
-                            // For production: uncomment the line below to fail the build
-                            // error "❌ Quality Gate failed: ${qg.status}. Fix code quality issues before deploying!"
-                            
-                            echo "Continuing deployment for learning purposes..."
+                            error "❌ Quality Gate failed: ${qg.status}. Fix code quality issues before deploying!"
                         } else {
                             echo "✅ Quality Gate passed!"
                         }

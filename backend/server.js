@@ -11,10 +11,13 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/newsle
 app.use(cors());
 app.use(express.json());
 
-// MongoDB Connection
+// MongoDB Connection with proper error handling
 mongoose.connect(MONGODB_URI)
   .then(() => console.log('✅ MongoDB connected successfully'))
-  .catch(err => console.error('❌ MongoDB connection error:', err));
+  .catch(err => {
+    console.error('❌ MongoDB connection error:', err);
+    process.exit(1);
+  });
 
 // Newsletter Schema
 const subscriberSchema = new mongoose.Schema({
@@ -59,10 +62,17 @@ app.get('/api/health', (req, res) => {
 app.post('/api/subscribe', async (req, res) => {
   try {
     const { email } = req.body;
+    
+    // Validate email
+    if (!email || !email.includes('@')) {
+      return res.status(400).json({ error: 'Valid email is required' });
+    }
+    
     const subscriber = new Subscriber({ email });
     await subscriber.save();
     res.status(201).json({ message: 'Subscribed successfully', email });
   } catch (error) {
+    console.error('Subscription error:', error);
     if (error.code === 11000) {
       return res.status(400).json({ error: 'Email already subscribed' });
     }
@@ -76,6 +86,7 @@ app.get('/api/subscribers', async (req, res) => {
     const subscribers = await Subscriber.find().sort({ subscribedAt: -1 });
     res.json(subscribers);
   } catch (error) {
+    console.error('Fetch subscribers error:', error);
     res.status(500).json({ error: 'Failed to fetch subscribers' });
   }
 });
@@ -87,6 +98,7 @@ app.post('/api/posts', async (req, res) => {
     await post.save();
     res.status(201).json(post);
   } catch (error) {
+    console.error('Create post error:', error);
     res.status(500).json({ error: 'Failed to create post' });
   }
 });
@@ -97,6 +109,7 @@ app.get('/api/posts', async (req, res) => {
     const posts = await Post.find().sort({ createdAt: -1 });
     res.json(posts);
   } catch (error) {
+    console.error('Fetch posts error:', error);
     res.status(500).json({ error: 'Failed to fetch posts' });
   }
 });
@@ -110,6 +123,7 @@ app.get('/api/posts/:id', async (req, res) => {
     }
     res.json(post);
   } catch (error) {
+    console.error('Fetch post error:', error);
     res.status(500).json({ error: 'Failed to fetch post' });
   }
 });
