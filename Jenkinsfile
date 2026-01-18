@@ -298,23 +298,23 @@ pipeline {
                             
                             # Check backend health with retries
                             echo "Checking backend health..."
-                            for i in {1..10}; do
+                            for i in 1 2 3 4 5 6 7 8 9 10; do
                                 if curl -f http://localhost:5000/api/health; then
                                     echo "✅ Backend is healthy"
                                     break
                                 fi
-                                echo "Waiting for backend... attempt $i/10"
+                                echo "Waiting for backend... attempt \$i/10"
                                 sleep 5
                             done
                             
                             # Check frontend with retries
                             echo "Checking frontend..."
-                            for i in {1..10}; do
+                            for i in 1 2 3 4 5 6 7 8 9 10; do
                                 if curl -f http://localhost:3000; then
                                     echo "✅ Frontend is healthy"
                                     break
                                 fi
-                                echo "Waiting for frontend... attempt $i/10"
+                                echo "Waiting for frontend... attempt \$i/10"
                                 sleep 5
                             done
                             
