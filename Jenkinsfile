@@ -23,164 +23,184 @@ pipeline {
         }
         
         
-        stage('OWASP Dependency Check - Backend') {
-            steps {
-                echo '🔍 Running OWASP Dependency Check on backend...'
-                timeout(time: 30, unit: 'MINUTES') {
-                    dir('backend') {
-                        dependencyCheck additionalArguments: '''
-                            --scan ./
-                            --format HTML
-                            --format XML
-                            --project "MailWave Backend"
-                            --failOnCVSS 7
-                            --disableNodeAudit
-                            --nvdApiDelay 6000
-                        ''', odcInstallation: 'DP-Check'
-                        
-                        dependencyCheckPublisher pattern: 'dependency-check-report.xml'
+        stage('OWASP Dependency Check') {
+            parallel {
+                stage('OWASP - Backend') {
+                    steps {
+                        echo '🔍 Running OWASP Dependency Check on backend...'
+                        timeout(time: 30, unit: 'MINUTES') {
+                            dir('backend') {
+                                dependencyCheck additionalArguments: '''
+                                    --scan ./
+                                    --format HTML
+                                    --format XML
+                                    --project "MailWave Backend"
+                                    --failOnCVSS 7
+                                    --disableNodeAudit
+                                    --nvdApiDelay 6000
+                                ''', odcInstallation: 'DP-Check'
+                                
+                                dependencyCheckPublisher pattern: 'dependency-check-report.xml'
+                            }
+                        }
                     }
                 }
-            }
-        }
-        
-        stage('OWASP Dependency Check - Frontend') {
-            steps {
-                echo '🔍 Running OWASP Dependency Check on frontend...'
-                timeout(time: 30, unit: 'MINUTES') {
-                    dir('frontend') {
-                        dependencyCheck additionalArguments: '''
-                            --scan ./
-                            --format HTML
-                            --format XML
-                            --project "MailWave Frontend"
-                            --failOnCVSS 7
-                            --disableNodeAudit
-                            --nvdApiDelay 6000
-                        ''', odcInstallation: 'DP-Check'
-                        
-                        dependencyCheckPublisher pattern: 'dependency-check-report.xml'
-                    }
-                }
-            }
-        }
-        
-        stage('SonarQube Analysis - Backend') {
-            steps {
-                echo '📊 Running SonarQube analysis on backend...'
-                dir('backend') {
-                    withSonarQubeEnv('SonarQube') {
-                        sh "${SONAR_SCANNER}/bin/sonar-scanner"
-                    }
-                }
-            }
-        }
-        
-        stage('Quality Gate - Backend') {
-            steps {
-                echo '🚦 Checking quality gate for backend...'
-                timeout(time: 10, unit: 'MINUTES') {
-                    script {
-                        def qg = waitForQualityGate()
-                        if (qg.status != 'OK') {
-                            echo "⚠️ Quality Gate failed: ${qg.status}"
-                            echo "Continuing anyway for learning purposes..."
-                        } else {
-                            echo "✅ Quality Gate passed!"
+                
+                stage('OWASP - Frontend') {
+                    steps {
+                        echo '🔍 Running OWASP Dependency Check on frontend...'
+                        timeout(time: 30, unit: 'MINUTES') {
+                            dir('frontend') {
+                                dependencyCheck additionalArguments: '''
+                                    --scan ./
+                                    --format HTML
+                                    --format XML
+                                    --project "MailWave Frontend"
+                                    --failOnCVSS 7
+                                    --disableNodeAudit
+                                    --nvdApiDelay 6000
+                                ''', odcInstallation: 'DP-Check'
+                                
+                                dependencyCheckPublisher pattern: 'dependency-check-report.xml'
+                            }
                         }
                     }
                 }
             }
         }
         
-        stage('SonarQube Analysis - Frontend') {
-            steps {
-                echo '📊 Running SonarQube analysis on frontend...'
-                dir('frontend') {
-                    withSonarQubeEnv('SonarQube') {
-                        sh "${SONAR_SCANNER}/bin/sonar-scanner"
+        stage('SonarQube Analysis') {
+            parallel {
+                stage('SonarQube - Backend') {
+                    steps {
+                        echo '📊 Running SonarQube analysis on backend...'
+                        dir('backend') {
+                            withSonarQubeEnv('SonarQube') {
+                                sh "${SONAR_SCANNER}/bin/sonar-scanner"
+                            }
+                        }
                     }
                 }
-            }
-        }
-        
-        stage('Quality Gate - Frontend') {
-            steps {
-                echo '🚦 Checking quality gate for frontend...'
-                timeout(time: 10, unit: 'MINUTES') {
-                    script {
-                        def qg = waitForQualityGate()
-                        if (qg.status != 'OK') {
-                            echo "⚠️ Quality Gate failed: ${qg.status}"
-                            echo "Continuing anyway for learning purposes..."
-                        } else {
-                            echo "✅ Quality Gate passed!"
+                
+                stage('SonarQube - Frontend') {
+                    steps {
+                        echo '📊 Running SonarQube analysis on frontend...'
+                        dir('frontend') {
+                            withSonarQubeEnv('SonarQube') {
+                                sh "${SONAR_SCANNER}/bin/sonar-scanner"
+                            }
                         }
                     }
                 }
             }
         }
         
-        stage('Build Backend Image') {
-            steps {
-                echo '🐳 Building backend Docker image...'
-                dir('backend') {
-                    script {
-                        sh "docker build -t ${BACKEND_IMAGE}:${BUILD_NUMBER} ."
-                        sh "docker tag ${BACKEND_IMAGE}:${BUILD_NUMBER} ${BACKEND_IMAGE}:latest"
+        stage('Quality Gates') {
+            parallel {
+                stage('Quality Gate - Backend') {
+                    steps {
+                        echo '🚦 Checking quality gate for backend...'
+                        timeout(time: 10, unit: 'MINUTES') {
+                            script {
+                                def qg = waitForQualityGate()
+                                if (qg.status != 'OK') {
+                                    echo "⚠️ Quality Gate failed: ${qg.status}"
+                                    echo "Continuing anyway for learning purposes..."
+                                } else {
+                                    echo "✅ Quality Gate passed!"
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                stage('Quality Gate - Frontend') {
+                    steps {
+                        echo '🚦 Checking quality gate for frontend...'
+                        timeout(time: 10, unit: 'MINUTES') {
+                            script {
+                                def qg = waitForQualityGate()
+                                if (qg.status != 'OK') {
+                                    echo "⚠️ Quality Gate failed: ${qg.status}"
+                                    echo "Continuing anyway for learning purposes..."
+                                } else {
+                                    echo "✅ Quality Gate passed!"
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
         
-        stage('Build Frontend Image') {
-            steps {
-                echo '🐳 Building frontend Docker image...'
-                dir('frontend') {
-                    script {
-                        sh "docker build -t ${FRONTEND_IMAGE}:${BUILD_NUMBER} ."
-                        sh "docker tag ${FRONTEND_IMAGE}:${BUILD_NUMBER} ${FRONTEND_IMAGE}:latest"
+        stage('Build Docker Images') {
+            parallel {
+                stage('Build Backend') {
+                    steps {
+                        echo '🐳 Building backend Docker image...'
+                        dir('backend') {
+                            script {
+                                sh "docker build -t ${BACKEND_IMAGE}:${BUILD_NUMBER} ."
+                                sh "docker tag ${BACKEND_IMAGE}:${BUILD_NUMBER} ${BACKEND_IMAGE}:latest"
+                            }
+                        }
+                    }
+                }
+                
+                stage('Build Frontend') {
+                    steps {
+                        echo '🐳 Building frontend Docker image...'
+                        dir('frontend') {
+                            script {
+                                sh "docker build -t ${FRONTEND_IMAGE}:${BUILD_NUMBER} ."
+                                sh "docker tag ${FRONTEND_IMAGE}:${BUILD_NUMBER} ${FRONTEND_IMAGE}:latest"
+                            }
+                        }
                     }
                 }
             }
         }
         
-        stage('Trivy Scan - Backend') {
-            steps {
-                echo '🔒 Scanning backend image with Trivy...'
-                script {
-                    sh """
-                        trivy image \
-                            --severity HIGH,CRITICAL \
-                            --format json \
-                            --output backend-trivy-report.json \
-                            ${BACKEND_IMAGE}:${BUILD_NUMBER}
-                        
-                        trivy image \
-                            --severity HIGH,CRITICAL \
-                            --exit-code 0 \
-                            ${BACKEND_IMAGE}:${BUILD_NUMBER}
-                    """
+        stage('Trivy Container Scan') {
+            parallel {
+                stage('Trivy - Backend') {
+                    steps {
+                        echo '🔒 Scanning backend image with Trivy...'
+                        script {
+                            sh """
+                                trivy image \
+                                    --severity HIGH,CRITICAL \
+                                    --format json \
+                                    --output backend-trivy-report.json \
+                                    ${BACKEND_IMAGE}:${BUILD_NUMBER}
+                                
+                                trivy image \
+                                    --severity HIGH,CRITICAL \
+                                    --exit-code 0 \
+                                    ${BACKEND_IMAGE}:${BUILD_NUMBER}
+                            """
+                        }
+                    }
                 }
-            }
-        }
-        
-        stage('Trivy Scan - Frontend') {
-            steps {
-                echo '🔒 Scanning frontend image with Trivy...'
-                script {
-                    sh """
-                        trivy image \
-                            --severity HIGH,CRITICAL \
-                            --format json \
-                            --output frontend-trivy-report.json \
-                            ${FRONTEND_IMAGE}:${BUILD_NUMBER}
-                        
-                        trivy image \
-                            --severity HIGH,CRITICAL \
-                            --exit-code 0 \
-                            ${FRONTEND_IMAGE}:${BUILD_NUMBER}
-                    """
+                
+                stage('Trivy - Frontend') {
+                    steps {
+                        echo '🔒 Scanning frontend image with Trivy...'
+                        script {
+                            sh """
+                                trivy image \
+                                    --severity HIGH,CRITICAL \
+                                    --format json \
+                                    --output frontend-trivy-report.json \
+                                    ${FRONTEND_IMAGE}:${BUILD_NUMBER}
+                                
+                                trivy image \
+                                    --severity HIGH,CRITICAL \
+                                    --exit-code 0 \
+                                    ${FRONTEND_IMAGE}:${BUILD_NUMBER}
+                            """
+                        }
+                    }
                 }
             }
         }
