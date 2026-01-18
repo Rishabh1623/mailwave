@@ -229,6 +229,52 @@ pipeline {
                 }
             }
         }
+        
+        stage('Deploy to EC2') {
+            steps {
+                echo '🚀 Deploying to EC2...'
+                script {
+                    withCredentials([[
+                        $class: 'AmazonWebServicesCredentialsBinding',
+                        credentialsId: 'aws-credentials',
+                        accessKeyVariable: 'AWS_ACCESS_KEY_ID',
+                        secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
+                    ]]) {
+                        sh """
+                            # Login to ECR
+                            aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REPO}
+                            
+                            # Pull latest images from ECR
+                            docker pull ${ECR_REPO}/${BACKEND_IMAGE}:latest
+                            docker pull ${ECR_REPO}/${FRONTEND_IMAGE}:latest
+                            
+                            # Tag images for docker-compose
+                            docker tag ${ECR_REPO}/${BACKEND_IMAGE}:latest ${BACKEND_IMAGE}:latest
+                            docker tag ${ECR_REPO}/${FRONTEND_IMAGE}:latest ${FRONTEND_IMAGE}:latest
+                            
+                            # Stop existing containers
+                            docker-compose down || true
+                            
+                            # Start new containers
+                            docker-compose up -d
+                            
+                            # Wait for services to start
+                            sleep 15
+                            
+                            # Verify deployment
+                            docker-compose ps
+                            
+                            # Check if services are healthy
+                            echo "Checking backend health..."
+                            curl -f http://localhost:5000/api/health || echo "Backend health check failed"
+                            
+                            echo "Checking frontend..."
+                            curl -f http://localhost:3000 || echo "Frontend check failed"
+                        """
+                    }
+                }
+            }
+        }
     }
     
     post {
