@@ -7,15 +7,22 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/newsletter';
 
+// Email validation regex
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 // Middleware
 app.use(cors());
 app.use(express.json());
 
 // MongoDB Connection with proper error handling
 mongoose.connect(MONGODB_URI)
-  .then(() => console.log('✅ MongoDB connected successfully'))
+  .then(() => {
+    if (process.env.NODE_ENV !== 'test') {
+      console.log('✅ MongoDB connected successfully');
+    }
+  })
   .catch(err => {
-    console.error('❌ MongoDB connection error:', err);
+    console.error('❌ MongoDB connection error:', err.message);
     process.exit(1);
   });
 
@@ -63,20 +70,24 @@ app.post('/api/subscribe', async (req, res) => {
   try {
     const { email } = req.body;
     
-    // Validate email
-    if (!email || !email.includes('@')) {
-      return res.status(400).json({ error: 'Valid email is required' });
+    // Validate email format
+    if (!email || typeof email !== 'string') {
+      return res.status(400).json({ error: 'Email is required' });
     }
     
-    const subscriber = new Subscriber({ email });
+    if (!EMAIL_REGEX.test(email)) {
+      return res.status(400).json({ error: 'Invalid email format' });
+    }
+    
+    const subscriber = new Subscriber({ email: email.toLowerCase().trim() });
     await subscriber.save();
-    res.status(201).json({ message: 'Subscribed successfully', email });
+    return res.status(201).json({ message: 'Subscribed successfully', email: subscriber.email });
   } catch (error) {
-    console.error('Subscription error:', error);
+    console.error('Subscription error:', error.message);
     if (error.code === 11000) {
       return res.status(400).json({ error: 'Email already subscribed' });
     }
-    res.status(500).json({ error: 'Subscription failed' });
+    return res.status(500).json({ error: 'Subscription failed' });
   }
 });
 
@@ -84,22 +95,38 @@ app.post('/api/subscribe', async (req, res) => {
 app.get('/api/subscribers', async (req, res) => {
   try {
     const subscribers = await Subscriber.find().sort({ subscribedAt: -1 });
-    res.json(subscribers);
+    return res.json(subscribers);
   } catch (error) {
-    console.error('Fetch subscribers error:', error);
-    res.status(500).json({ error: 'Failed to fetch subscribers' });
+    console.error('Fetch subscribers error:', error.message);
+    return res.status(500).json({ error: 'Failed to fetch subscribers' });
   }
 });
 
 // Create blog post
 app.post('/api/posts', async (req, res) => {
   try {
-    const post = new Post(req.body);
+    const { title, content, author } = req.body;
+    
+    // Validate required fields
+    if (!title || typeof title !== 'string' || title.trim().length === 0) {
+      return res.status(400).json({ error: 'Title is required' });
+    }
+    
+    if (!content || typeof content !== 'string' || content.trim().length === 0) {
+      return res.status(400).json({ error: 'Content is required' });
+    }
+    
+    const post = new Post({
+      title: title.trim(),
+      content: content.trim(),
+      author: author ? author.trim() : undefined
+    });
+    
     await post.save();
-    res.status(201).json(post);
+    return res.status(201).json(post);
   } catch (error) {
-    console.error('Create post error:', error);
-    res.status(500).json({ error: 'Failed to create post' });
+    console.error('Create post error:', error.message);
+    return res.status(500).json({ error: 'Failed to create post' });
   }
 });
 
@@ -107,27 +134,51 @@ app.post('/api/posts', async (req, res) => {
 app.get('/api/posts', async (req, res) => {
   try {
     const posts = await Post.find().sort({ createdAt: -1 });
-    res.json(posts);
+    return res.json(posts);
   } catch (error) {
-    console.error('Fetch posts error:', error);
-    res.status(500).json({ error: 'Failed to fetch posts' });
+    console.error('Fetch posts error:', error.message);
+    return res.status(500).json({ error: 'Failed to fetch posts' });
   }
 });
 
 // Get single post
 app.get('/api/posts/:id', async (req, res) => {
   try {
-    const post = await Post.findById(req.params.id);
+    const { id } = req.params;
+    
+    // Validate MongoDB ObjectId format
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ error: 'Invalid post ID format' });
+    }
+    
+    const post = await Post.findById(id);
     if (!post) {
       return res.status(404).json({ error: 'Post not found' });
     }
-    res.json(post);
+    return res.json(post);
   } catch (error) {
-    console.error('Fetch post error:', error);
-    res.status(500).json({ error: 'Failed to fetch post' });
+    console.error('Fetch post error:', error.message);
+    return res.status(500).json({ error: 'Failed to fetch post' });
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+// Start server
+const server = app.listen(PORT, () => {
+  if (process.env.NODE_ENV !== 'test') {
+    console.log(`🚀 Server running on port ${PORT}`);
+  }
 });
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM signal received: closing HTTP server');
+  server.close(() => {
+    console.log('HTTP server closed');
+    mongoose.connection.close(false, () => {
+      console.log('MongoDB connection closed');
+      process.exit(0);
+    });
+  });
+});
+
+module.exports = app;
