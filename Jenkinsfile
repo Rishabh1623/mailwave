@@ -253,36 +253,75 @@ pipeline {
                         secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
                     ]]) {
                         sh """
+                            echo "=== Pre-Deployment Diagnostics ==="
+                            echo "Checking existing containers..."
+                            docker ps -a --filter "name=mailwave" --format "table {{.Names}}\t{{.Status}}\t{{.Image}}" || true
+                            
+                            echo ""
+                            echo "Checking existing networks..."
+                            docker network ls | grep mailwave || echo "No mailwave networks found"
+                            
+                            echo ""
+                            echo "=== Starting Cleanup ==="
+                            
+                            # Stop all mailwave containers (regardless of how they were created)
+                            echo "Stopping containers..."
+                            docker stop \$(docker ps -aq --filter "name=mailwave") 2>/dev/null || echo "No running containers to stop"
+                            
+                            # Remove all mailwave containers
+                            echo "Removing containers..."
+                            docker rm -f \$(docker ps -aq --filter "name=mailwave") 2>/dev/null || echo "No containers to remove"
+                            
+                            # Remove docker-compose resources
+                            echo "Cleaning up docker-compose resources..."
+                            docker-compose down -v 2>/dev/null || true
+                            
+                            # Remove any orphaned mailwave networks
+                            echo "Removing networks..."
+                            docker network rm \$(docker network ls --filter "name=mailwave" -q) 2>/dev/null || echo "No networks to remove"
+                            
+                            echo ""
+                            echo "=== Cleanup Complete ==="
+                            docker ps -a --filter "name=mailwave" || echo "All mailwave containers removed"
+                            
+                            echo ""
+                            echo "=== Starting Deployment ==="
+                            
                             # Login to ECR
                             aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REPO}
                             
                             # Pull latest images from ECR
+                            echo "Pulling images from ECR..."
                             docker pull ${ECR_REPO}/${BACKEND_IMAGE}:latest
                             docker pull ${ECR_REPO}/${FRONTEND_IMAGE}:latest
                             
                             # Tag images for docker-compose
+                            echo "Tagging images..."
                             docker tag ${ECR_REPO}/${BACKEND_IMAGE}:latest ${BACKEND_IMAGE}:latest
                             docker tag ${ECR_REPO}/${FRONTEND_IMAGE}:latest ${FRONTEND_IMAGE}:latest
                             
-                            # Stop and remove existing containers (force remove)
-                            docker-compose down -v || true
-                            docker rm -f mailwave-mongodb mailwave-backend mailwave-frontend || true
-                            
                             # Start new containers
+                            echo "Starting containers with docker-compose..."
                             docker-compose up -d
                             
                             # Wait for services to start
+                            echo "Waiting for services to initialize..."
                             sleep 15
                             
-                            # Verify deployment
+                            echo ""
+                            echo "=== Deployment Status ==="
                             docker-compose ps
                             
-                            # Check if services are healthy
+                            echo ""
+                            echo "=== Health Checks ==="
                             echo "Checking backend health..."
-                            curl -f http://localhost:5000/api/health || echo "Backend health check failed (may still be starting)"
+                            curl -f http://localhost:5000/api/health || echo "⚠️ Backend health check failed (may still be starting)"
                             
                             echo "Checking frontend..."
-                            curl -f http://localhost:3000 || echo "Frontend check failed (may still be starting)"
+                            curl -f http://localhost:3000 || echo "⚠️ Frontend check failed (may still be starting)"
+                            
+                            echo ""
+                            echo "✅ Deployment complete!"
                         """
                     }
                 }
