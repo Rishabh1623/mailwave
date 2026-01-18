@@ -285,9 +285,67 @@ pipeline {
         }
         success {
             echo '✅ Pipeline succeeded! All security checks passed.'
+            emailext (
+                subject: "✅ Pipeline Success: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                body: """
+                    <h2>Pipeline Succeeded! 🎉</h2>
+                    <p><strong>Job:</strong> ${env.JOB_NAME}</p>
+                    <p><strong>Build Number:</strong> ${env.BUILD_NUMBER}</p>
+                    <p><strong>Build URL:</strong> <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>
+                    <p><strong>Status:</strong> ✅ SUCCESS</p>
+                    
+                    <h3>Pipeline Stages Completed:</h3>
+                    <ul>
+                        <li>✅ OWASP Dependency Check</li>
+                        <li>✅ SonarQube Code Quality Analysis</li>
+                        <li>✅ Quality Gates</li>
+                        <li>✅ Docker Image Build</li>
+                        <li>✅ Trivy Container Security Scan</li>
+                        <li>✅ Push to AWS ECR</li>
+                        <li>✅ Deploy to EC2</li>
+                    </ul>
+                    
+                    <p><strong>Application URLs:</strong></p>
+                    <ul>
+                        <li>Backend: <a href="http://13.218.28.204:5000/api/health">http://13.218.28.204:5000/api/health</a></li>
+                        <li>Frontend: <a href="http://13.218.28.204:3000">http://13.218.28.204:3000</a></li>
+                    </ul>
+                """,
+                to: 'rishabhmadne1623@gmail.com',
+                mimeType: 'text/html'
+            )
         }
         failure {
             echo '❌ Pipeline failed! Check security scan results.'
+            emailext (
+                subject: "❌ Pipeline Failed: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                body: """
+                    <h2>Pipeline Failed! ⚠️</h2>
+                    <p><strong>Job:</strong> ${env.JOB_NAME}</p>
+                    <p><strong>Build Number:</strong> ${env.BUILD_NUMBER}</p>
+                    <p><strong>Build URL:</strong> <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>
+                    <p><strong>Console Output:</strong> <a href="${env.BUILD_URL}console">${env.BUILD_URL}console</a></p>
+                    <p><strong>Status:</strong> ❌ FAILED</p>
+                    
+                    <h3>Action Required:</h3>
+                    <ol>
+                        <li>Check the console output for error details</li>
+                        <li>Review security scan reports (OWASP, SonarQube, Trivy)</li>
+                        <li>Fix the issues and push changes to trigger a new build</li>
+                    </ol>
+                    
+                    <p><strong>Common Failure Reasons:</strong></p>
+                    <ul>
+                        <li>OWASP: HIGH/CRITICAL vulnerabilities in dependencies</li>
+                        <li>SonarQube: Quality gate failed (bugs, code smells, security issues)</li>
+                        <li>Trivy: HIGH/CRITICAL vulnerabilities in container images</li>
+                        <li>Docker: Build errors or missing dependencies</li>
+                        <li>Deployment: Container startup failures</li>
+                    </ul>
+                """,
+                to: 'rishabhmadne1623@gmail.com',
+                mimeType: 'text/html'
+            )
         }
     }
 }
