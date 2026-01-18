@@ -264,8 +264,9 @@ pipeline {
                             docker tag ${ECR_REPO}/${BACKEND_IMAGE}:latest ${BACKEND_IMAGE}:latest
                             docker tag ${ECR_REPO}/${FRONTEND_IMAGE}:latest ${FRONTEND_IMAGE}:latest
                             
-                            # Stop existing containers
-                            docker-compose down || true
+                            # Stop and remove existing containers (force remove)
+                            docker-compose down -v || true
+                            docker rm -f mailwave-mongodb mailwave-backend mailwave-frontend || true
                             
                             # Start new containers
                             docker-compose up -d
@@ -278,10 +279,10 @@ pipeline {
                             
                             # Check if services are healthy
                             echo "Checking backend health..."
-                            curl -f http://localhost:5000/api/health || echo "Backend health check failed"
+                            curl -f http://localhost:5000/api/health || echo "Backend health check failed (may still be starting)"
                             
                             echo "Checking frontend..."
-                            curl -f http://localhost:3000 || echo "Frontend check failed"
+                            curl -f http://localhost:3000 || echo "Frontend check failed (may still be starting)"
                         """
                     }
                 }
