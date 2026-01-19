@@ -17,7 +17,7 @@ services:
       retries: 5
 
   backend:
-    build: ./backend
+    image: mailwave-backend:latest
     container_name: mailwave-backend
     ports:
       - "5000:5000"
@@ -31,19 +31,31 @@ services:
     networks:
       - mailwave-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   frontend:
-    build: ./frontend
+    image: mailwave-frontend:latest
     container_name: mailwave-frontend
     ports:
-      - "3000:3000"
+      - "3000:80"
     environment:
-      - REACT_APP_API_URL=http://35.168.36.1:5000/api
+      - REACT_APP_API_URL=/api
     depends_on:
       - backend
     networks:
       - mailwave-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
 
 volumes:
   mongodb_data:
