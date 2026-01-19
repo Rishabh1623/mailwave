@@ -343,58 +343,33 @@ pipeline {
         }
         success {
             echo '✅ Pipeline succeeded! All security checks passed.'
-            slackSend (
-                color: 'good',
-                channel: '#jenkins-builds',
-                message: """
-✅ *Pipeline SUCCESS* 
-*Job:* ${env.JOB_NAME}
-*Build:* #${env.BUILD_NUMBER}
-*Duration:* ${currentBuild.durationString.replace(' and counting', '')}
-
-*Stages Completed:*
-✅ OWASP Dependency Check
-✅ SonarQube Code Quality
-✅ Quality Gates
-✅ Docker Build
-✅ Trivy Security Scan
-✅ Push to ECR
-✅ Deploy to EC2
-
-*Application:*
-• Backend: http://13.218.28.204:5000/api/health
-• Frontend: http://13.218.28.204:3000
-
-<${env.BUILD_URL}|View Build> | <${env.BUILD_URL}console|Console Output>
-                """.stripIndent()
-            )
+            script {
+                try {
+                    slackSend (
+                        color: 'good',
+                        channel: 'new-channel',
+                        tokenCredentialId: 'slack-jenkins-2026',
+                        message: "✅ *Pipeline SUCCESS*\n*Job:* ${env.JOB_NAME}\n*Build:* #${env.BUILD_NUMBER}\n*Application:* http://13.218.28.204:3000"
+                    )
+                } catch (Exception e) {
+                    echo "Slack notification failed: ${e.message}"
+                }
+            }
         }
         failure {
             echo '❌ Pipeline failed! Check security scan results.'
-            slackSend (
-                color: 'danger',
-                channel: '#jenkins-builds',
-                message: """
-❌ *Pipeline FAILED*
-*Job:* ${env.JOB_NAME}
-*Build:* #${env.BUILD_NUMBER}
-*Duration:* ${currentBuild.durationString.replace(' and counting', '')}
-
-*Action Required:*
-1. Check console output for errors
-2. Review security scan reports
-3. Fix issues and push changes
-
-*Common Issues:*
-• OWASP: HIGH/CRITICAL vulnerabilities
-• SonarQube: Quality gate failed
-• Trivy: Container vulnerabilities
-• Docker: Build errors
-• Deployment: Container failures
-
-<${env.BUILD_URL}|View Build> | <${env.BUILD_URL}console|Console Output>
-                """.stripIndent()
-            )
+            script {
+                try {
+                    slackSend (
+                        color: 'danger',
+                        channel: 'new-channel',
+                        tokenCredentialId: 'slack-jenkins-2026',
+                        message: "❌ *Pipeline FAILED*\n*Job:* ${env.JOB_NAME}\n*Build:* #${env.BUILD_NUMBER}\n*Check:* ${env.BUILD_URL}console"
+                    )
+                } catch (Exception e) {
+                    echo "Slack notification failed: ${e.message}"
+                }
+            }
         }
     }
 }
