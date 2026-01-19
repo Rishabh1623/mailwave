@@ -143,7 +143,7 @@ pipeline {
                         echo '🐳 Building frontend Docker image...'
                         dir('frontend') {
                             script {
-                                sh "docker build -t ${FRONTEND_IMAGE}:${BUILD_NUMBER} ."
+                                sh "docker build --target production -t ${FRONTEND_IMAGE}:${BUILD_NUMBER} ."
                                 sh "docker tag ${FRONTEND_IMAGE}:${BUILD_NUMBER} ${FRONTEND_IMAGE}:latest"
                             }
                         }
