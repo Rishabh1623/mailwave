@@ -344,30 +344,159 @@ pipeline {
         success {
             echo '✅ Pipeline succeeded! All security checks passed.'
             script {
-                try {
-                    slackSend (
-                        color: 'good',
-                        channel: 'new-channel',
-                        tokenCredentialId: 'slack-jenkins-2026',
-                        message: "✅ *Pipeline SUCCESS*\n*Job:* ${env.JOB_NAME}\n*Build:* #${env.BUILD_NUMBER}\n*Application:* http://13.218.28.204:3000"
-                    )
-                } catch (Exception e) {
-                    echo "Slack notification failed: ${e.message}"
+                withCredentials([string(credentialsId: 'slack-webhook-url', variable: 'SLACK_WEBHOOK')]) {
+                    sh """
+                        curl -X POST \$SLACK_WEBHOOK \\
+                        -H 'Content-Type: application/json' \\
+                        -d '{
+                            "text": "✅ *Pipeline SUCCESS*",
+                            "blocks": [
+                                {
+                                    "type": "section",
+                                    "text": {
+                                        "type": "mrkdwn",
+                                        "text": "*Pipeline Build Successful* :white_check_mark:"
+                                    }
+                                },
+                                {
+                                    "type": "section",
+                                    "fields": [
+                                        {
+                                            "type": "mrkdwn",
+                                            "text": "*Job:*\\n${env.JOB_NAME}"
+                                        },
+                                        {
+                                            "type": "mrkdwn",
+                                            "text": "*Build:*\\n#${env.BUILD_NUMBER}"
+                                        },
+                                        {
+                                            "type": "mrkdwn",
+                                            "text": "*Status:*\\nSUCCESS"
+                                        },
+                                        {
+                                            "type": "mrkdwn",
+                                            "text": "*Duration:*\\n${currentBuild.durationString.replace(' and counting', '')}"
+                                        }
+                                    ]
+                                },
+                                {
+                                    "type": "section",
+                                    "text": {
+                                        "type": "mrkdwn",
+                                        "text": "*Stages Completed:*\\n✅ OWASP Dependency Check\\n✅ SonarQube Code Quality\\n✅ Quality Gates\\n✅ Docker Build\\n✅ Trivy Security Scan\\n✅ Push to ECR\\n✅ Deploy to EC2"
+                                    }
+                                },
+                                {
+                                    "type": "section",
+                                    "text": {
+                                        "type": "mrkdwn",
+                                        "text": "*Application URLs:*\\n• Frontend: http://13.218.28.204:3000\\n• Backend: http://13.218.28.204:5000/api/health"
+                                    }
+                                },
+                                {
+                                    "type": "actions",
+                                    "elements": [
+                                        {
+                                            "type": "button",
+                                            "text": {
+                                                "type": "plain_text",
+                                                "text": "View Build"
+                                            },
+                                            "url": "${env.BUILD_URL}"
+                                        },
+                                        {
+                                            "type": "button",
+                                            "text": {
+                                                "type": "plain_text",
+                                                "text": "Console Output"
+                                            },
+                                            "url": "${env.BUILD_URL}console"
+                                        }
+                                    ]
+                                }
+                            ]
+                        }'
+                    """
                 }
             }
         }
         failure {
             echo '❌ Pipeline failed! Check security scan results.'
             script {
-                try {
-                    slackSend (
-                        color: 'danger',
-                        channel: 'new-channel',
-                        tokenCredentialId: 'slack-jenkins-2026',
-                        message: "❌ *Pipeline FAILED*\n*Job:* ${env.JOB_NAME}\n*Build:* #${env.BUILD_NUMBER}\n*Check:* ${env.BUILD_URL}console"
-                    )
-                } catch (Exception e) {
-                    echo "Slack notification failed: ${e.message}"
+                withCredentials([string(credentialsId: 'slack-webhook-url', variable: 'SLACK_WEBHOOK')]) {
+                    sh """
+                        curl -X POST \$SLACK_WEBHOOK \\
+                        -H 'Content-Type: application/json' \\
+                        -d '{
+                            "text": "❌ *Pipeline FAILED*",
+                            "blocks": [
+                                {
+                                    "type": "section",
+                                    "text": {
+                                        "type": "mrkdwn",
+                                        "text": "*Pipeline Build Failed* :x:"
+                                    }
+                                },
+                                {
+                                    "type": "section",
+                                    "fields": [
+                                        {
+                                            "type": "mrkdwn",
+                                            "text": "*Job:*\\n${env.JOB_NAME}"
+                                        },
+                                        {
+                                            "type": "mrkdwn",
+                                            "text": "*Build:*\\n#${env.BUILD_NUMBER}"
+                                        },
+                                        {
+                                            "type": "mrkdwn",
+                                            "text": "*Status:*\\nFAILED"
+                                        },
+                                        {
+                                            "type": "mrkdwn",
+                                            "text": "*Duration:*\\n${currentBuild.durationString.replace(' and counting', '')}"
+                                        }
+                                    ]
+                                },
+                                {
+                                    "type": "section",
+                                    "text": {
+                                        "type": "mrkdwn",
+                                        "text": "*Action Required:*\\n1. Check console output for errors\\n2. Review security scan reports\\n3. Fix issues and push changes"
+                                    }
+                                },
+                                {
+                                    "type": "section",
+                                    "text": {
+                                        "type": "mrkdwn",
+                                        "text": "*Common Issues:*\\n• OWASP: HIGH/CRITICAL vulnerabilities\\n• SonarQube: Quality gate failed\\n• Trivy: Container vulnerabilities\\n• Docker: Build errors\\n• Deployment: Container failures"
+                                    }
+                                },
+                                {
+                                    "type": "actions",
+                                    "elements": [
+                                        {
+                                            "type": "button",
+                                            "text": {
+                                                "type": "plain_text",
+                                                "text": "View Build"
+                                            },
+                                            "url": "${env.BUILD_URL}",
+                                            "style": "danger"
+                                        },
+                                        {
+                                            "type": "button",
+                                            "text": {
+                                                "type": "plain_text",
+                                                "text": "Console Output"
+                                            },
+                                            "url": "${env.BUILD_URL}console"
+                                        }
+                                    ]
+                                }
+                            ]
+                        }'
+                    """
                 }
             }
         }
