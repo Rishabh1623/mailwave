@@ -19,15 +19,11 @@ scrape_configs:
           service: 'backend'
           environment: 'production'
 
-  # MongoDB (if exporter is added later)
-  - job_name: 'mongodb'
-    static_configs:
-      - targets: ['mongodb:27017']
-        labels:
-          service: 'mongodb'
-          environment: 'production'
-
-  # Node Exporter (system metrics) - optional
-  # - job_name: 'node-exporter'
+  # MongoDB monitoring (requires MongoDB Exporter)
+  # Uncomment when MongoDB Exporter is added:
+  # - job_name: 'mongodb'
   #   static_configs:
-  #     - targets: ['node-exporter:9100']
+  #     - targets: ['mongodb-exporter:9216']
+  #       labels:
+  #         service: 'mongodb'
+  #         environment: 'production'
