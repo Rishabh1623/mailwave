@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const promClient = require('prom-client');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -10,9 +11,40 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/newsle
 // Email validation regex
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// Prometheus metrics setup
+const register = new promClient.Registry();
+promClient.collectDefaultMetrics({ register });
+
+// Custom metrics
+const httpRequestDuration = new promClient.Histogram({
+  name: 'http_request_duration_seconds',
+  help: 'Duration of HTTP requests in seconds',
+  labelNames: ['method', 'route', 'status_code'],
+  registers: [register]
+});
+
+const httpRequestTotal = new promClient.Counter({
+  name: 'http_requests_total',
+  help: 'Total number of HTTP requests',
+  labelNames: ['method', 'route', 'status_code'],
+  registers: [register]
+});
+
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Metrics middleware
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = (Date.now() - start) / 1000;
+    const route = req.route ? req.route.path : req.path;
+    httpRequestDuration.labels(req.method, route, res.statusCode).observe(duration);
+    httpRequestTotal.labels(req.method, route, res.statusCode).inc();
+  });
+  next();
+});
 
 // MongoDB Connection with proper error handling
 mongoose.connect(MONGODB_URI)
@@ -63,6 +95,12 @@ const Post = mongoose.model('Post', postSchema);
 // Routes
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Backend is running' });
+});
+
+// Prometheus metrics endpoint
+app.get('/metrics', async (req, res) => {
+  res.set('Content-Type', register.contentType);
+  res.end(await register.metrics());
 });
 
 // Subscribe to newsletter
