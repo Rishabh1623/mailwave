@@ -1,0 +1,40 @@
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: mailwave-cluster
+  region: us-east-1
+  version: "1.28"
+
+# Node groups (worker nodes)
+nodeGroups:
+  - name: mailwave-nodes
+    instanceType: t3.small
+    desiredCapacity: 2
+    minSize: 2
+    maxSize: 3
+    volumeSize: 20
+    ssh:
+      allow: false
+    labels:
+      role: worker
+      environment: production
+    tags:
+      Project: MailWave
+      Environment: Production
+      ManagedBy: eksctl
+
+# Enable CloudWatch logging
+cloudWatch:
+  clusterLogging:
+    enableTypes: ["api", "audit", "authenticator", "controllerManager", "scheduler"]
+
+# IAM settings
+iam:
+  withOIDC: true
+  serviceAccounts:
+    - metadata:
+        name: aws-load-balancer-controller
+        namespace: kube-system
+      wellKnownPolicies:
+        awsLoadBalancerController: true
