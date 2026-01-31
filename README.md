@@ -272,92 +272,39 @@ Developer Push
 ## 📸 Visual Documentation
 
 ### CI/CD Pipeline Execution
-
-![Jenkins Pipeline](./Jenkins.png)
-*Automated Jenkins pipeline showing all stages: Build, Security Scans, Docker Build, ECR Push, EKS Deployment*
+![Jenkins Pipeline](./screenshots/Jenkins.png)
 
 ### Code Quality & Security
-
-![SonarQube Analysis](./SonarQube.png)
-*SonarQube quality gate ensuring code meets security and maintainability standards*
+![SonarQube Analysis](./screenshots/SonarQube.png)
 
 ### Kubernetes Deployment
+![EKS Cluster](./screenshots/EKS-mailwave.png)
 
-![EKS Cluster](./EKS-mailwave.png)
-*AWS EKS cluster running production workloads with 2 worker nodes*
+### Monitoring Dashboard
+![Grafana](./screenshots/grafana.png)
 
-### Monitoring & Observability
+### AWS Infrastructure
 
-![Grafana Dashboard](./grafana.png)
-*Real-time monitoring dashboard showing HTTP requests, response times, CPU, and memory metrics*
+| EC2 Instances | Load Balancer |
+|---------------|---------------|
+| ![EC2](./screenshots/EC2.png) | ![LB](./screenshots/Load%20balancers.png) |
 
-### Infrastructure Components
-
-<table>
-<tr>
-<td width="50%">
-
-![EC2 Instances](./EC2.png)
-*EC2 instances: DevOps tooling + EKS worker nodes*
-
-</td>
-<td width="50%">
-
-![Load Balancer](./Load%20balancers.png)
-*Classic Load Balancer distributing traffic to frontend pods*
-
-</td>
-</tr>
-<tr>
-<td width="50%">
-
-![Security Groups](./Security%20group.png)
-*Security group configuration with proper port access control*
-
-</td>
-<td width="50%">
-
-![EBS Volumes](./Volumes.png)
-*Persistent EBS volume for MongoDB data storage*
-
-</td>
-</tr>
-</table>
+| Security Groups | EBS Volumes |
+|-----------------|-------------|
+| ![SG](./screenshots/Security%20group.png) | ![Volumes](./screenshots/Volumes.png) |
 
 ### Application & Notifications
 
-<table>
-<tr>
-<td width="50%">
-
-![MailWave Application](./Mailwave%20blog.png)
-*Live application running on EKS with blog posts*
-
-</td>
-<td width="50%">
-
-![Slack Notifications](./slack%20notification%20.png)
-*Automated Slack notifications for pipeline status*
-
-</td>
-</tr>
-</table>
+| Live Application | Slack Notifications |
+|------------------|---------------------|
+| ![App](./screenshots/Mailwave%20blog.png) | ![Slack](./screenshots/slack%20notification%20.png) |
 
 ---
 
-## 🚀 Live Deployment
 
-### Production URLs
 
-| Service | URL | Credentials |
-|---------|-----|-------------|
-| **Application** | `http://a5b794203703f4205b18955aee544360-1047870478.us-east-1.elb.amazonaws.com` | Public |
-| **Grafana** | `http://13.218.28.204:3001` | admin / admin |
-| **Prometheus** | `http://13.218.28.204:9090` | Public |
-| **Jenkins** | `http://13.218.28.204:8080` | Configured |
-| **SonarQube** | `http://13.218.28.204:9000` | admin / admin |
 
-> **Note**: These are demo credentials. Production systems should use proper authentication and HTTPS.
+
 
 
 ---
