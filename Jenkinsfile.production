@@ -1,0 +1,326 @@
+pipeline {
+    agent any
+    
+    options {
+        timeout(time: 120, unit: 'MINUTES')
+        skipDefaultCheckout()
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+    }
+    
+    environment {
+        AWS_REGION = 'us-east-1'
+        AWS_ACCOUNT_ID = '543927035352'
+        ECR_REPO = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+        BACKEND_IMAGE = 'mailwave-backend'
+        FRONTEND_IMAGE = 'mailwave-frontend'
+        SONAR_SCANNER = tool 'SonarScanner'
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                echo '📥 Checking out code from GitHub...'
+                checkout scm
+            }
+        }
+        
+        stage('OWASP Dependency Check') {
+            steps {
+                echo '🔍 Running OWASP Dependency Check...'
+                timeout(time: 45, unit: 'MINUTES') {
+                    script {
+                        // Backend check
+                        dir('backend') {
+                            dependencyCheck additionalArguments: '''
+                                --scan ./
+                                --format HTML
+                                --format XML
+                                --project "MailWave Backend"
+                                --failOnCVSS 7
+                                --disableNodeAudit
+                                --nvdApiDelay 8000
+                            ''', odcInstallation: 'DP-Check'
+                            
+                            dependencyCheckPublisher pattern: 'dependency-check-report.xml'
+                        }
+                        
+                        // Frontend check
+                        dir('frontend') {
+                            dependencyCheck additionalArguments: '''
+                                --scan ./
+                                --format HTML
+                                --format XML
+                                --project "MailWave Frontend"
+                                --failOnCVSS 7
+                                --disableNodeAudit
+                                --nvdApiDelay 8000
+                            ''', odcInstallation: 'DP-Check'
+                            
+                            dependencyCheckPublisher pattern: 'dependency-check-report.xml'
+                        }
+                    }
+                }
+            }
+        }
+        
+        stage('SonarQube Analysis') {
+            parallel {
+                stage('SonarQube - Backend') {
+                    steps {
+                        echo '📊 Running SonarQube analysis on backend...'
+                        dir('backend') {
+                            withSonarQubeEnv('SonarQube') {
+                                sh "${SONAR_SCANNER}/bin/sonar-scanner"
+                            }
+                        }
+                    }
+                }
+                
+                stage('SonarQube - Frontend') {
+                    steps {
+                        echo '📊 Running SonarQube analysis on frontend...'
+                        dir('frontend') {
+                            withSonarQubeEnv('SonarQube') {
+                                sh "${SONAR_SCANNER}/bin/sonar-scanner"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        stage('Quality Gate') {
+            steps {
+                echo '🚦 Waiting for SonarQube Quality Gate...'
+                timeout(time: 10, unit: 'MINUTES') {
+                    script {
+                        def qg = waitForQualityGate()
+                        if (qg.status != 'OK') {
+                            error "Quality Gate failed: ${qg.status}"
+                        }
+                        echo "✅ Quality Gate passed!"
+                    }
+                }
+            }
+        }
+        
+        stage('Build Docker Images') {
+            parallel {
+                stage('Build Backend') {
+                    steps {
+                        echo '🐳 Building backend Docker image...'
+                        dir('backend') {
+                            script {
+                                sh "docker build -t ${BACKEND_IMAGE}:${BUILD_NUMBER} ."
+                                sh "docker tag ${BACKEND_IMAGE}:${BUILD_NUMBER} ${BACKEND_IMAGE}:latest"
+                            }
+                        }
+                    }
+                }
+                
+                stage('Build Frontend') {
+                    steps {
+                        echo '🐳 Building frontend Docker image...'
+                        dir('frontend') {
+                            script {
+                                sh "docker build -t ${FRONTEND_IMAGE}:${BUILD_NUMBER} ."
+                                sh "docker tag ${FRONTEND_IMAGE}:${BUILD_NUMBER} ${FRONTEND_IMAGE}:latest"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        stage('Trivy Container Scan') {
+            parallel {
+                stage('Trivy - Backend') {
+                    steps {
+                        echo '🔒 Scanning backend image with Trivy...'
+                        script {
+                            sh """
+                                trivy image \
+                                    --severity HIGH,CRITICAL \
+                                    --format json \
+                                    --output backend-trivy-report.json \
+                                    --exit-code 1 \
+                                    ${BACKEND_IMAGE}:${BUILD_NUMBER}
+                            """
+                            echo "✅ Backend Trivy scan passed"
+                        }
+                    }
+                }
+                
+                stage('Trivy - Frontend') {
+                    steps {
+                        echo '🔒 Scanning frontend image with Trivy...'
+                        script {
+                            sh """
+                                trivy image \
+                                    --severity HIGH,CRITICAL \
+                                    --format json \
+                                    --output frontend-trivy-report.json \
+                                    --exit-code 1 \
+                                    ${FRONTEND_IMAGE}:${BUILD_NUMBER}
+                            """
+                            echo "✅ Frontend Trivy scan passed"
+                        }
+                    }
+                }
+            }
+        }
+        
+        stage('Security Approval') {
+            when {
+                expression { 
+                    return env.BRANCH_NAME == 'main' || env.BRANCH_NAME == 'master'
+                }
+            }
+            steps {
+                script {
+                    timeout(time: 24, unit: 'HOURS') {
+                        input message: 'Security scans complete. Approve deployment to production?',
+                              ok: 'Deploy',
+                              submitter: 'admin,security-team'
+                    }
+                }
+            }
+        }
+        
+        stage('Push to ECR') {
+            steps {
+                echo '📤 Pushing images to AWS ECR...'
+                script {
+                    withCredentials([[
+                        $class: 'AmazonWebServicesCredentialsBinding',
+                        credentialsId: 'aws-credentials',
+                        accessKeyVariable: 'AWS_ACCESS_KEY_ID',
+                        secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
+                    ]]) {
+                        sh """
+                            aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REPO}
+                            
+                            docker tag ${BACKEND_IMAGE}:${BUILD_NUMBER} ${ECR_REPO}/${BACKEND_IMAGE}:${BUILD_NUMBER}
+                            docker tag ${BACKEND_IMAGE}:${BUILD_NUMBER} ${ECR_REPO}/${BACKEND_IMAGE}:latest
+                            docker push ${ECR_REPO}/${BACKEND_IMAGE}:${BUILD_NUMBER}
+                            docker push ${ECR_REPO}/${BACKEND_IMAGE}:latest
+                            
+                            docker tag ${FRONTEND_IMAGE}:${BUILD_NUMBER} ${ECR_REPO}/${FRONTEND_IMAGE}:${BUILD_NUMBER}
+                            docker tag ${FRONTEND_IMAGE}:${BUILD_NUMBER} ${ECR_REPO}/${FRONTEND_IMAGE}:latest
+                            docker push ${ECR_REPO}/${FRONTEND_IMAGE}:${BUILD_NUMBER}
+                            docker push ${ECR_REPO}/${FRONTEND_IMAGE}:latest
+                        """
+                    }
+                }
+            }
+        }
+        
+        stage('Deploy to Production') {
+            steps {
+                echo '🚀 Deploying to Production EC2...'
+                script {
+                    withCredentials([[
+                        $class: 'AmazonWebServicesCredentialsBinding',
+                        credentialsId: 'aws-credentials',
+                        accessKeyVariable: 'AWS_ACCESS_KEY_ID',
+                        secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
+                    ]]) {
+                        sh '''
+                            # Cleanup
+                            docker stop mailwave-mongodb mailwave-backend mailwave-frontend 2>/dev/null || true
+                            docker rm -f mailwave-mongodb mailwave-backend mailwave-frontend 2>/dev/null || true
+                            docker-compose down -v 2>/dev/null || true
+                            
+                            # Login and pull
+                            aws ecr get-login-password --region ''' + AWS_REGION + ''' | docker login --username AWS --password-stdin ''' + ECR_REPO + '''
+                            docker pull ''' + ECR_REPO + '''/''' + BACKEND_IMAGE + ''':''' + BUILD_NUMBER + '''
+                            docker pull ''' + ECR_REPO + '''/''' + FRONTEND_IMAGE + ''':''' + BUILD_NUMBER + '''
+                            
+                            # Tag for docker-compose
+                            docker tag ''' + ECR_REPO + '''/''' + BACKEND_IMAGE + ''':''' + BUILD_NUMBER + ''' ''' + BACKEND_IMAGE + ''':latest
+                            docker tag ''' + ECR_REPO + '''/''' + FRONTEND_IMAGE + ''':''' + BUILD_NUMBER + ''' ''' + FRONTEND_IMAGE + ''':latest
+                            
+                            # Deploy
+                            docker-compose up -d
+                            
+                            # Health checks
+                            sleep 15
+                            curl -f http://localhost:5000/api/health || exit 1
+                            curl -f http://localhost:3000 || exit 1
+                            
+                            echo "✅ Deployment successful!"
+                        '''
+                    }
+                }
+            }
+        }
+    }
+    
+    post {
+        always {
+            echo '🧹 Cleaning up...'
+            sh 'docker system prune -f'
+            archiveArtifacts artifacts: '*-trivy-report.json,**/dependency-check-report.*', allowEmptyArchive: true
+            
+            // Publish test results if available
+            junit testResults: '**/test-results/**/*.xml', allowEmptyResults: true
+        }
+        success {
+            echo '✅ Pipeline succeeded!'
+            emailext (
+                subject: "✅ Production Deployment Success: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                body: """
+                    <h2>Production Deployment Succeeded! 🎉</h2>
+                    <p><strong>Job:</strong> ${env.JOB_NAME}</p>
+                    <p><strong>Build:</strong> #${env.BUILD_NUMBER}</p>
+                    <p><strong>Status:</strong> ✅ SUCCESS</p>
+                    
+                    <h3>Security Checks Passed:</h3>
+                    <ul>
+                        <li>✅ OWASP Dependency Check (CVSS < 7)</li>
+                        <li>✅ SonarQube Quality Gate</li>
+                        <li>✅ Trivy Container Scan (No HIGH/CRITICAL)</li>
+                        <li>✅ Manual Security Approval</li>
+                    </ul>
+                    
+                    <p><strong>Deployed Version:</strong> ${env.BUILD_NUMBER}</p>
+                    <p><strong>Console:</strong> <a href="${env.BUILD_URL}console">${env.BUILD_URL}console</a></p>
+                """,
+                to: 'security-team@company.com,devops-team@company.com',
+                mimeType: 'text/html'
+            )
+        }
+        failure {
+            echo '❌ Pipeline failed!'
+            emailext (
+                subject: "❌ PRODUCTION DEPLOYMENT FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                body: """
+                    <h2 style="color: red;">Production Deployment Failed! ⚠️</h2>
+                    <p><strong>Job:</strong> ${env.JOB_NAME}</p>
+                    <p><strong>Build:</strong> #${env.BUILD_NUMBER}</p>
+                    <p><strong>Status:</strong> ❌ FAILED</p>
+                    
+                    <h3>IMMEDIATE ACTION REQUIRED</h3>
+                    <p>A production deployment has failed security checks or deployment validation.</p>
+                    
+                    <p><strong>Console Output:</strong> <a href="${env.BUILD_URL}console">${env.BUILD_URL}console</a></p>
+                    <p><strong>Security Reports:</strong> <a href="${env.BUILD_URL}artifact">${env.BUILD_URL}artifact</a></p>
+                    
+                    <h3>Common Failure Reasons:</h3>
+                    <ul>
+                        <li>HIGH/CRITICAL vulnerabilities detected</li>
+                        <li>Quality gate failed (bugs, security hotspots)</li>
+                        <li>Container security scan failed</li>
+                        <li>Deployment health checks failed</li>
+                    </ul>
+                """,
+                to: 'security-team@company.com,devops-team@company.com,oncall@company.com',
+                mimeType: 'text/html',
+                attachLog: true
+            )
+        }
+        unstable {
+            echo '⚠️ Pipeline unstable'
+        }
+    }
+}

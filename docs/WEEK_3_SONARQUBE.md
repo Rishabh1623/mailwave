@@ -78,6 +78,22 @@ docker logs -f sonarqube
    - Click **Add**, then select `sonarqube-token`
 5. Click **Save**
 
+### Step 2.5: Configure SonarQube Webhook (CRITICAL for Quality Gates!)
+
+**Without this, quality gates will timeout!**
+
+1. Go to SonarQube: `http://YOUR_EC2_IP:9000`
+2. Login as admin
+3. **Administration** → **Configuration** → **Webhooks**
+4. Click **Create**
+5. Configure:
+   - Name: `Jenkins`
+   - URL: `http://localhost:8080/sonarqube-webhook/`
+   - Secret: (leave empty for local setup)
+6. Click **Create**
+
+**What this does:** After SonarQube finishes analyzing code, it sends results back to Jenkins so the quality gate check completes immediately instead of timing out.
+
 ### Step 3: Configure SonarQube Scanner
 
 1. **Manage Jenkins** → **Global Tool Configuration**
