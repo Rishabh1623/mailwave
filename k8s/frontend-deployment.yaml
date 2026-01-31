@@ -18,6 +18,7 @@ spec:
       containers:
       - name: frontend
         image: 543927035352.dkr.ecr.us-east-1.amazonaws.com/mailwave-frontend:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 80
           name: http
